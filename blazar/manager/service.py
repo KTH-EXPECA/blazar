@@ -645,8 +645,7 @@ class ManagerService(service_utils.RPCServer):
                                 {'status': status.event.IN_PROGRESS})
 
         with trusts.create_ctx_from_trust(lease['trust_id']) as ctx:
-            reservations = lease['reservations']
-
+            reservations = self._reservations_execution_ordered(lease)
             if lease_not_started or lease_not_ended:
                 # Only run the on_end enforcement if we're explicitly
                 # ending the lease for the first time OR if we're terminating
@@ -659,7 +658,7 @@ class ManagerService(service_utils.RPCServer):
                 except Exception as e:
                     LOG.error(e)
 
-            for reservation in reservations:
+            for reservation in self._reservations_execution_ordered(lease):
                 if reservation['status'] != status.reservation.DELETED:
                     plugin = self.plugins[reservation['resource_type']]
                     try:
@@ -707,7 +706,7 @@ class ManagerService(service_utils.RPCServer):
         lease = self.get_lease(lease_id)
 
         event_status = status.event.DONE
-        for reservation in lease['reservations']:
+        for reservation in self._reservations_execution_ordered(lease):
             resource_type = reservation['resource_type']
             try:
                 if reservation_status is not None:
@@ -734,6 +733,25 @@ class ManagerService(service_utils.RPCServer):
         db_api.event_update(event_id, {'status': event_status})
 
         return event_status
+
+    def _reservations_execution_ordered(self, lease):
+        """Sort reservations in order of desired execution.
+
+        This is currently hard-coded such that network reservations always
+        execute last, because it is harder to tear down a network reservation
+        cleanly if there are still running instances related to a physical
+        host or instance reservation.
+        """
+        execution_order = {
+            'default': 0,
+            'network': 1,
+        }
+
+        def _sort_key(res):
+            return execution_order.get(
+                res['resource_type'], execution_order['default'])
+
+        return sorted(lease['reservations'], key=_sort_key)
 
     def _create_reservation(self, values):
         resource_type = values['resource_type']
@@ -863,6 +881,7 @@ class ManagerService(service_utils.RPCServer):
         try:
             resource_type, method = name.rsplit(':', 1)
         except ValueError:
+            LOG.error(name)
             # NOTE(sbauza) : the dispatcher needs to know which plugin to use,
             #  raising error if consequently not
             raise AttributeError(name)
