@@ -75,8 +75,8 @@ class UsageEnforcement:
         context = self.format_context(context, lease_values)
         lease = self.format_lease(lease_values, reservations, allocations)
 
-        for _filter in self.enabled_filters:
-            _filter.check_create(context, lease)
+        for filter_ in self.enabled_filters:
+            filter_.check_create(context, lease)
 
     def check_update(self, context, current_lease, new_lease,
                      current_allocations, new_allocations,
@@ -87,13 +87,13 @@ class UsageEnforcement:
         new_lease = self.format_lease(new_lease, new_reservations,
                                       new_allocations)
 
-        for _filter in self.enabled_filters:
-            _filter.check_update(context, current_lease, new_lease)
+        for filter_ in self.enabled_filters:
+            filter_.check_update(context, current_lease, new_lease)
 
     def on_end(self, context, lease, allocations):
         context = self.format_context(context, lease)
         lease_values = self.format_lease(lease, lease['reservations'],
                                          allocations)
 
-        for _filter in self.enabled_filters:
-            _filter.on_end(context, lease_values)
+        for filter_ in self.enabled_filters:
+            filter_.on_end(context, lease_values)

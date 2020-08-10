@@ -1505,8 +1505,10 @@ class ServiceTestCase(tests.TestCase):
 
         self.manager.delete_lease(self.lease_id)
 
-        self.event_update.assert_called_once_with('fake',
-                                                  {'status': 'IN_PROGRESS'})
+        self.event_update.assert_has_calls([
+            mock.call('fake', {'status': 'IN_PROGRESS'}),
+            mock.call('fake', {'status': 'DONE'}),
+        ])
         self.fake_plugin.on_end.assert_called_with('111')
         self.lease_destroy.assert_called_once_with(self.lease_id)
         enforcement_on_end.assert_called_once()
@@ -1555,8 +1557,10 @@ class ServiceTestCase(tests.TestCase):
 
         self.manager.delete_lease(self.lease_id)
 
-        self.event_update.assert_called_once_with('fake',
-                                                  {'status': 'IN_PROGRESS'})
+        self.event_update.assert_has_calls([
+            mock.call('fake', {'status': 'IN_PROGRESS'}),
+            mock.call('fake', {'status': 'DONE'}),
+        ])
         self.fake_plugin.on_end.assert_called_with('111')
         self.lease_destroy.assert_called_once_with(self.lease_id)
         enforcement_on_end.assert_called_once()

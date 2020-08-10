@@ -544,7 +544,7 @@ class ManagerService(service_utils.RPCServer):
                 raise common_ex.NotAuthorized(e)
 
             # TODO(frossigneux) rollback if an exception is raised
-            for reservation in existing_reservations:
+            for reservation in (existing_reservations):
                 v = {}
                 v['start_date'] = values['start_date']
                 v['end_date'] = values['end_date']
@@ -646,6 +646,7 @@ class ManagerService(service_utils.RPCServer):
 
         with trusts.create_ctx_from_trust(lease['trust_id']) as ctx:
             reservations = self._reservations_execution_ordered(lease)
+
             if lease_not_started or lease_not_ended:
                 # Only run the on_end enforcement if we're explicitly
                 # ending the lease for the first time OR if we're terminating
