@@ -52,51 +52,6 @@ class TestCNClient(tests.TestCase):
 
         self.version = '2'
 
-    def test_client_from_kwargs(self):
-        self.ctx.side_effect = RuntimeError
-        endpoint = 'fake_endpoint'
-        username = 'blazar_admin'
-        password = 'blazar_password'
-        user_domain = 'User_Domain'
-        project_name = 'admin'
-        project_domain = 'Project_Domain'
-        auth_url = "%s://%s:%s/%s" % (CONF.os_auth_protocol,
-                                      CONF.os_auth_host,
-                                      CONF.os_auth_port,
-                                      CONF.os_auth_prefix)
-
-        kwargs = {'version': self.version,
-                  'endpoint_override': endpoint,
-                  'username': username,
-                  'password': password,
-                  'user_domain_name': user_domain,
-                  'project_name': project_name,
-                  'project_domain_name': project_domain}
-
-        self.nova.BlazarNovaClient(**kwargs)
-
-        self.client.assert_called_once_with(version=self.version,
-                                            username=username,
-                                            password=password,
-                                            user_domain_name=user_domain,
-                                            project_name=project_name,
-                                            project_domain_name=project_domain,
-                                            auth_url=auth_url,
-                                            endpoint_override=endpoint)
-
-    def test_client_from_ctx(self):
-        kwargs = {'version': self.version}
-
-        self.nova.BlazarNovaClient(**kwargs)
-
-        self.auth.assert_called_once_with(self.url,
-                                          self.ctx().auth_token)
-        self.session.assert_called_once_with(auth=self.auth.return_value)
-        self.client.assert_called_once_with(version=self.version,
-                                            endpoint_override=self.url,
-                                            session=self.session.return_value,
-                                            global_request_id=mock.ANY)
-
     def test_getattr(self):
         # TODO(n.s.): Will be done as soon as pypi package will be updated
         pass
@@ -200,7 +155,7 @@ class ReservationPoolTestCase(tests.TestCase):
 
         az_name = self.blazar_az_prefix + self.pool_name
 
-        agg = self.pool.create(az=az_name)
+        agg = self.pool.create(az=az_name, project_id=self.project_id)
 
         self.assertEqual(agg, self.fake_aggregate)
 
@@ -215,7 +170,7 @@ class ReservationPoolTestCase(tests.TestCase):
         self.patch(self.nova.aggregates, 'create').return_value = (
             self.fake_aggregate)
 
-        self.pool.create()
+        self.pool.create(project_id=self.project_id)
 
         self.nova.aggregates.create.assert_called_once_with(self.pool_name,
                                                             None)
