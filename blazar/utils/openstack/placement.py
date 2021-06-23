@@ -12,8 +12,8 @@
 # limitations under the License.
 
 from keystoneauth1 import adapter
-from keystoneauth1 import session
 from keystoneauth1.identity import v3
+from keystoneauth1 import session
 from oslo_config import cfg
 
 from blazar import context
@@ -102,12 +102,12 @@ class BlazarPlacementClient(object):
                              microversion=microversion)
 
     def _get_reservation_provider_name(self, host_name):
-        """Get the name of a reservation provider
-        from the host name
+        """Get the name of a reservation provider from the host name.
 
         :param host_name: Name of the host
         :return: The name of the reservation provider
         """
+
         return 'blazar_' + host_name
 
     def get_resource_provider(self, rp_name):
@@ -118,6 +118,7 @@ class BlazarPlacementClient(object):
                  or None if the resource provider doesn't exist.
         :raise: ResourceProviderRetrievalFailed on error.
         """
+
         url = "/resource_providers?name=%s" % rp_name
         resp = self.get(url)
         if resp:
@@ -140,11 +141,12 @@ class BlazarPlacementClient(object):
     def get_reservation_provider(self, host_name):
         """Calls the placement API for a reservation provider record.
 
-        param host_name: Name of the host
+        :param host_name: Name of the host
         :return: A dict of resource provider information
                  or None if the resource provider doesn't exist.
         :raise: ResourceProviderRetrievalFailed on error.
         """
+
         return self.get_resource_provider(
             self._get_reservation_provider_name(host_name)
         )
@@ -160,6 +162,7 @@ class BlazarPlacementClient(object):
                  the newly-created resource provider.
         :raise: ResourceProviderCreationFailed error.
         """
+
         url = "/resource_providers"
         payload = {'name': rp_name}
         if rp_uuid is not None:
@@ -204,6 +207,7 @@ class BlazarPlacementClient(object):
         :param rp_uuid: UUID of the resource provider to delete
         :raise: ResourceProviderDeletionFailed error
         """
+
         url = '/resource_providers/%s' % rp_uuid
         resp = self.delete(url)
 
@@ -252,6 +256,7 @@ class BlazarPlacementClient(object):
                         shall be something like "CUSTOM_RESERVATION_{uuid}".
         :raises: ResourceClassCreationFailed error.
         """
+
         url = '/resource_classes'
         payload = {'name': rc_name}
         resp = self.post(url, payload)
@@ -275,6 +280,7 @@ class BlazarPlacementClient(object):
                         shall be something like "CUSTOM_RESERVATION_{uuid}"
         :raises: ResourceClassDeletionFailed error.
         """
+
         url = '/resource_classes/%s' % rc_name
         resp = self.delete(url)
         if resp:
@@ -316,6 +322,7 @@ class BlazarPlacementClient(object):
 
         :param rp_uuid: UUID of the resource provider to get
         """
+
         url = '/resource_providers/%s/inventories' % rp_uuid
         resp = self.get(url)
         if resp:
@@ -335,6 +342,7 @@ class BlazarPlacementClient(object):
                            True, else just overwrite the total value
         :raises: ResourceProviderNotFound or InventoryUpdateFailed error.
         """
+
         curr = self.get_inventory(rp_uuid)
         inventories = curr['inventories']
         generation = curr['resource_provider_generation']
@@ -389,6 +397,7 @@ class BlazarPlacementClient(object):
         :param rc_name: The resource class name to delete from inventory
         :raises: InventoryUpdateFailed error
         """
+
         url = '/resource_providers/%s/inventories/%s' % (rp_uuid, rc_name)
 
         resp = self.delete(url)
@@ -406,6 +415,7 @@ class BlazarPlacementClient(object):
         :param num: The number of the instances to reserve on the host
         :return: The updated inventory record
         """
+
         # Get reservation provider uuid
         rp_name = self._get_reservation_provider_name(host_name)
         rp = self.get_resource_provider(rp_name)
@@ -429,6 +439,7 @@ class BlazarPlacementClient(object):
         :raises: ResourceProviderNotFound if the reservation
                  provider is not found
         """
+
         # Get reservation provider uuid
         rp_name = self._get_reservation_provider_name(host_name)
         rp = self.get_resource_provider(rp_name)
@@ -462,6 +473,7 @@ class BlazarPlacementClient(object):
         :param trait_name: The name of the trait
         :raises: TraitCreationFailed error.
         """
+
         url = '/traits/%s' % trait_name
         resp = self.put(url, {})
         if resp:
@@ -483,6 +495,7 @@ class BlazarPlacementClient(object):
         :param trait_name: The name of the trait
         :raises: TraitDeletionFailed error.
         """
+
         url = '/traits/%s' % trait_name
         resp = self.delete(url)
         if resp:
@@ -504,6 +517,7 @@ class BlazarPlacementClient(object):
         :param reservation_uuid: The reservation uuid
         :raises: TraitCreationFailed error.
         """
+
         self.create_trait(self._get_custom_reservation_trait_name(
             reserv_uuid, project_id))
 
@@ -513,6 +527,7 @@ class BlazarPlacementClient(object):
         :param reservation_uuid: The reservation uuid
         :raises: TraitDeletionFailed error.
         """
+
         self.delete_trait(self._get_custom_reservation_trait_name(
             reserv_uuid, project_id))
 
@@ -523,6 +538,7 @@ class BlazarPlacementClient(object):
         :param traits: The list of traits
         :raises: TraitAssociationFailed error.
         """
+
         url = '/resource_providers/%s/traits' % rp_uuid
         resp = self.get(url)
         current_traits = []
@@ -564,6 +580,7 @@ class BlazarPlacementClient(object):
         :param traits: The list of traits
         :raises: TraitdissociationFailed error.
         """
+
         url = '/resource_providers/%s/traits' % rp_uuid
         resp = self.get(url)
         current_traits = []
@@ -607,6 +624,7 @@ class BlazarPlacementClient(object):
         :param reserv_uuid: The reservation uuid
         :raises: TraitAssociationFailed error.
         """
+
         self.associate_traits_with_resource_provider(
             rp_uuid,
             [self._get_custom_reservation_trait_name(reserv_uuid, project_id)])
@@ -619,13 +637,13 @@ class BlazarPlacementClient(object):
         :param reserv_uuid: The reservation uuid
         :raises: TraitAssociationFailed error.
         """
+
         self.dissociate_traits_with_resource_provider(
             rp_uuid,
             [self._get_custom_reservation_trait_name(reserv_uuid, project_id)])
 
     def list_resource_providers(self):
-        """Get all resource providers
-        """
+        """Get all resource providers."""
         resp = self.get('/resource_providers')
         resource_providers = []
         if resp:
@@ -640,6 +658,7 @@ class BlazarPlacementClient(object):
         :param trait_name: The name of the trait
         :return: A list of resource providers
         """
+
         trait_rps = []
         # get all resource providers
         resource_providers = self.list_resource_providers()
