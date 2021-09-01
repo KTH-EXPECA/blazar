@@ -465,6 +465,7 @@ class DevicePlugin(base.BasePlugin):
         options['detail'] = detail
         devices_allocations = self.query_device_allocations(devices_id_list,
                                                             **options)
+        self.add_extra_allocation_info(devices_allocations)
         return [{"resource_id": device, "reservations": allocs}
                 for device, allocs in devices_allocations.items()]
 
