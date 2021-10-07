@@ -32,7 +32,18 @@ from blazar.utils.openstack import ironic
 from blazar.utils.openstack import neutron
 from blazar.utils import plugins as plugins_utils
 
+
+plugin_opts = [
+    cfg.StrOpt('default_resource_properties',
+                default='',
+                help='Default resource_properties when creating a lease of '
+                     'this type.'),
+
+]
+
+
 CONF = cfg.CONF
+CONF.register_opts(plugin_opts, group=plugin.RESOURCE_TYPE)
 LOG = logging.getLogger(__name__)
 
 before_end_options = ['', 'snapshot', 'default', 'email']
@@ -538,6 +549,11 @@ class NetworkPlugin(base.BasePlugin):
         return network_allocations
 
     def allocation_candidates(self, values):
+        if not values.get('resource_properties', ''):
+            values['resource_properties'] = CONF[
+                plugin.RESOURCE_TYPE
+            ].default_resource_properties
+
         self._check_params(values)
 
         network_ids = self._matching_networks(
