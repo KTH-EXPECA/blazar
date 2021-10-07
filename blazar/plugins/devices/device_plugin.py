@@ -49,6 +49,10 @@ plugin_opts = [
                help='The minimum interval [minutes] between the end of a '
                'lease and the start of the next lease for the same '
                'device. This interval is used for cleanup.'),
+    cfg.StrOpt('default_resource_properties',
+                default='',
+                help='Default resource_properties when creating a lease of '
+                     'this type.'),
 ]
 
 plugin_opts.extend(monitor.monitor_opts)
@@ -526,6 +530,11 @@ class DevicePlugin(base.BasePlugin):
         return device_allocations
 
     def allocation_candidates(self, values):
+        if not values.get('resource_properties', ''):
+            values['resource_properties'] = CONF[
+                plugin.RESOURCE_TYPE
+            ].default_resource_properties
+
         self._check_params(values)
 
         device_ids = self._matching_devices(

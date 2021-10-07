@@ -47,6 +47,11 @@ plugin_opts = [
                default='',
                help='Actions which we will be taken before the end of '
                     'the lease'),
+    cfg.StrOpt('default_resource_properties',
+                default='',
+                help='Default resource_properties when creating a lease of '
+                     'this type.'),
+
 ]
 
 plugin_opts.extend(monitor.monitor_opts)
@@ -558,6 +563,11 @@ class PhysicalHostPlugin(base.BasePlugin, nova.NovaClientWrapper):
         return host_allocations
 
     def allocation_candidates(self, values):
+        if not values.get('resource_properties', ''):
+            values['resource_properties'] = CONF[
+                plugin.RESOURCE_TYPE
+            ].default_resource_properties
+
         self._check_params(values)
 
         host_ids = self._matching_hosts(
@@ -636,6 +646,7 @@ class PhysicalHostPlugin(base.BasePlugin, nova.NovaClientWrapper):
 
         if 'hypervisor_properties' not in values:
             raise manager_ex.MissingParameter(param='hypervisor_properties')
+
         if 'resource_properties' not in values:
             raise manager_ex.MissingParameter(param='resource_properties')
 
