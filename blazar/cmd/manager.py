@@ -30,6 +30,13 @@ from blazar.notification import notifier
 from blazar.utils import service as service_utils
 
 
+class ManagerServiceSingleton:
+    _instance = manager_service.ManagerService()
+    def __new__(self):
+        return ManagerServiceSingleton._instance
+
+manager_service_instance = None
+
 def main():
     cfg.CONF(project='blazar', prog='blazar-manager')
     service_utils.prepare_service(sys.argv)
@@ -37,7 +44,7 @@ def main():
     notifier.init()
     service.launch(
         cfg.CONF,
-        manager_service.ManagerService(),
+        ManagerServiceSingleton(),
         restart_method='mutate'
     ).wait()
 
