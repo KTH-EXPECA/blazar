@@ -13,19 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from blazar.manager.floatingips import rpcapi as manager_rpcapi
+from blazar.cmd.manager import ManagerServiceSingleton
 from blazar import policy
 from blazar.utils import trusts
 
 
 class API(object):
     def __init__(self):
-        self.manager_rpcapi = manager_rpcapi.ManagerRPCAPI()
+        self.manager_service = ManagerServiceSingleton()
 
     @policy.authorize('floatingips', 'get')
     def get_floatingips(self):
         """List all existing floatingip."""
-        return self.manager_rpcapi.list_floatingips()
+        return self.manager_service.call("virtual:floatingip", "list_floatingips")
 
     @policy.authorize('floatingips', 'post')
     @trusts.use_trust_auth()
@@ -36,7 +36,7 @@ class API(object):
         :type data: dict
         """
 
-        return self.manager_rpcapi.create_floatingip(data)
+        return self.manager_service.call("virtual:floatingip", "create_floatingip", data)
 
     @policy.authorize('floatingips', 'get')
     def get_floatingip(self, floatingip_id):
@@ -45,7 +45,7 @@ class API(object):
         :param floatingip_id: ID of the floatingip in Blazar DB.
         :type floatingip_id: str
         """
-        return self.manager_rpcapi.get_floatingip(floatingip_id)
+        return self.manager_service.call("virtual:floatingip", "get_floatingip", floatingip_id)
 
     @policy.authorize('floatingips', 'delete')
     def delete_floatingip(self, floatingip_id):
@@ -54,4 +54,4 @@ class API(object):
         :param floatingip_id: ID of the floatingip in Blazar DB.
         :type floatingip_id: str
         """
-        self.manager_rpcapi.delete_floatingip(floatingip_id)
+        self.manager_service.call("virtual:floatingip", "delete_floatingip", floatingip_id)
