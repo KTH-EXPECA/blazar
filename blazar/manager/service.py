@@ -890,6 +890,7 @@ class ManagerService(service_utils.RPCServer):
         fn = None
         try:
             try:
+                LOG.info(self.plugins.keys())
                 fn = getattr(self.plugins[resource_type], method)
             except KeyError:
                 LOG.error("Plugin with resource type %s not found",
