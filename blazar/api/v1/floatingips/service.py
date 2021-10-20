@@ -20,12 +20,12 @@ from blazar.utils import trusts
 
 class API(object):
     def __init__(self):
-        self.manager_service = ManagerServiceSingleton()
+        self.call_manager = ManagerServiceSingleton("virtual:floatingip")
 
     @policy.authorize('floatingips', 'get')
     def get_floatingips(self):
         """List all existing floatingip."""
-        return self.manager_service.call("virtual:floatingip", "list_floatingips")
+        return self.call_manager("list_floatingips")
 
     @policy.authorize('floatingips', 'post')
     @trusts.use_trust_auth()
@@ -36,7 +36,7 @@ class API(object):
         :type data: dict
         """
 
-        return self.manager_service.call("virtual:floatingip", "create_floatingip", data)
+        return self.call_manager("create_floatingip", data)
 
     @policy.authorize('floatingips', 'get')
     def get_floatingip(self, floatingip_id):
@@ -45,7 +45,7 @@ class API(object):
         :param floatingip_id: ID of the floatingip in Blazar DB.
         :type floatingip_id: str
         """
-        return self.manager_service.call("virtual:floatingip", "get_floatingip", floatingip_id)
+        return self.call_manager("get_floatingip", floatingip_id)
 
     @policy.authorize('floatingips', 'delete')
     def delete_floatingip(self, floatingip_id):
@@ -54,4 +54,4 @@ class API(object):
         :param floatingip_id: ID of the floatingip in Blazar DB.
         :type floatingip_id: str
         """
-        self.manager_service.call("virtual:floatingip", "delete_floatingip", floatingip_id)
+        self.call_manager("delete_floatingip", floatingip_id)

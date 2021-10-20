@@ -18,6 +18,7 @@ eventlet.monkey_patch()
 
 import gettext
 import sys
+from functools import partial
 
 from oslo_config import cfg
 from oslo_service import service
@@ -32,7 +33,9 @@ from blazar.utils import service as service_utils
 
 class ManagerServiceSingleton:
     _instance = manager_service.ManagerService()
-    def __new__(self):
+    def __new__(self, resource_type=None):
+        if resource_type:
+            return partial(ManagerServiceSingleton._instance.call, resource_type)
         return ManagerServiceSingleton._instance
 
 manager_service_instance = None
