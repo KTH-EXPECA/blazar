@@ -25,7 +25,7 @@ class API(object):
     @policy.authorize('floatingips', 'get')
     def get_floatingips(self):
         """List all existing floatingip."""
-        return self.call_manager("list_floatingips")
+        return self.call_manager("list_floatingip")
 
     @policy.authorize('floatingips', 'post')
     @trusts.use_trust_auth()
