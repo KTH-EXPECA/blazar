@@ -24,6 +24,7 @@ CONF.import_opt('rpc_topic', 'blazar.manager.service', 'manager')
 
 class ManagerRPCAPI(service.RPCClient):
     """Client side for the Manager RPC API.
+
     Used from other services to communicate with blazar-manager service.
     """
     BASE_RPC_API_VERSION = '1.0'

@@ -19,6 +19,7 @@ from blazar.utils import service
 
 class ManagerRPCAPI(service.RPCClient):
     """Client side for the Manager RPC API.
+
     Used from other services to communicate with blazar-manager service.
     """
     def __init__(self):

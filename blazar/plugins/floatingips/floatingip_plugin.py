@@ -372,7 +372,7 @@ class FloatingIpPlugin(base.BasePlugin):
             raise manager_ex.FloatingIPNotFound(floatingip=fip_id)
         return fip
 
-    def list_floatingips(self):
+    def list_floatingip(self):
         fips = db_api.floatingip_list()
         return fips
 
