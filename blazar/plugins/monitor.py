@@ -20,9 +20,8 @@ from oslo_config import cfg
 import six
 
 import abc
-from blazar import status
-from blazar.db import api as db_api
 from blazar.plugins import base
+from blazar import status
 from oslo_log import log as logging
 
 
@@ -111,18 +110,21 @@ class GeneralMonitorPlugin(base.BaseMonitorPlugin):
     @abc.abstractmethod
     def get_unreservable_resourses(self):
         """Get all unreservable resources
+
         """
         pass
 
     @abc.abstractmethod
     def poll_resource_failures(self):
         """Get a list of failed resources and recovered resources
+
         """
         pass
 
     @abc.abstractmethod
     def set_reservable(self, resource_id, is_reservable):
         """Set resource as reservable or not reservable
+
         """
         pass
 

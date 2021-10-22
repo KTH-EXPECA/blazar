@@ -323,7 +323,7 @@ def get_user_ids_for_lease_ids(lease_ids):
     session = get_session()
 
     leases_query = (session.query(models.Lease.id, models.Lease.user_id)
-        .filter(models.Lease.id.in_(lease_ids)))
+                    .filter(models.Lease.id.in_(lease_ids)))
 
     return leases_query.all()
 

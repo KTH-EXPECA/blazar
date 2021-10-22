@@ -21,7 +21,6 @@ from oslo_config import cfg
 from oslo_utils import strutils
 
 from blazar import context
-from blazar import status
 from blazar.db import api as db_api
 from blazar.db import exceptions as db_ex
 from blazar.db import utils as db_utils
@@ -29,11 +28,12 @@ from blazar.manager import exceptions as manager_ex
 from blazar.plugins import base
 from blazar.plugins import monitor
 from blazar.plugins import oshosts as plugin
-from blazar.utils import plugins as plugins_utils
+from blazar import status
 from blazar.utils.openstack import heat
 from blazar.utils.openstack import ironic
 from blazar.utils.openstack import nova
 from blazar.utils.openstack import placement
+from blazar.utils import plugins as plugins_utils
 from oslo_log import log as logging
 from random import shuffle
 from uuid import UUID
@@ -48,9 +48,9 @@ plugin_opts = [
                help='Actions which we will be taken before the end of '
                     'the lease'),
     cfg.StrOpt('default_resource_properties',
-                default='',
-                help='Default resource_properties when creating a lease of '
-                     'this type.'),
+               default='',
+               help='Default resource_properties when creating a lease of '
+                    'this type.'),
 
 ]
 

@@ -21,17 +21,17 @@ from oslo_utils.strutils import bool_from_string
 import six
 
 from blazar import context
-from blazar import status
 from blazar.db import api as db_api
 from blazar.db import utils as db_utils
 from blazar.manager import exceptions as mgr_exceptions
 from blazar.plugins import base
 from blazar.plugins import instances as plugin
 from blazar.plugins import oshosts
-from blazar.utils import plugins as plugins_utils
+from blazar import status
 from blazar.utils.openstack import exceptions as openstack_ex
 from blazar.utils.openstack import nova
 from blazar.utils.openstack import placement
+from blazar.utils import plugins as plugins_utils
 import collections
 from oslo_log import log as logging
 import retrying

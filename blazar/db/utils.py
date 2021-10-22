@@ -169,5 +169,6 @@ def get_reserved_periods(resource_id, start_date, end_date, duration,
     return IMPL.get_reserved_periods(resource_id, start_date, end_date,
                                      duration, resource_type=resource_type)
 
+
 def get_user_ids_for_lease_ids(lease_ids):
     return IMPL.get_user_ids_for_lease_ids(lease_ids)
