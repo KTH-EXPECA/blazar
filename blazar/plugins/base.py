@@ -174,7 +174,7 @@ class BasePlugin(object):
             items = db_utils.get_user_ids_for_lease_ids(ids)
             keystoneclient = keystone.BlazarKeystoneClient()
             users = keystoneclient.users.list()
-            user_map = { user.id: user for user in users }
+            user_map = {user.id: user for user in users}
             lease_to_name = dict()
             for lease_id, user_id in items:
                 user = user_map[user_id]
@@ -182,7 +182,9 @@ class BasePlugin(object):
 
             for allocations in resource_allocations.values():
                 for alloc in allocations:
-                    alloc["extras"]["user_name"] = lease_to_name[alloc["lease_id"]]
+                    alloc["extras"]["user_name"] = \
+                        lease_to_name[alloc["lease_id"]]
+
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseMonitorPlugin():

@@ -20,7 +20,6 @@ from oslo_config import cfg
 from oslo_utils import strutils
 from stevedore import named
 
-from blazar import status
 from blazar.db import api as db_api
 from blazar.db import exceptions as db_ex
 from blazar.db import utils as db_utils
@@ -28,8 +27,9 @@ from blazar.manager import exceptions as manager_ex
 from blazar.plugins import base
 from blazar.plugins import devices as plugin
 from blazar.plugins import monitor
-from blazar.utils import plugins as plugins_utils
+from blazar import status
 from blazar.utils.openstack import placement
+from blazar.utils import plugins as plugins_utils
 from oslo_log import log as logging
 from random import shuffle
 
@@ -50,9 +50,9 @@ plugin_opts = [
                'lease and the start of the next lease for the same '
                'device. This interval is used for cleanup.'),
     cfg.StrOpt('default_resource_properties',
-                default='',
-                help='Default resource_properties when creating a lease of '
-                     'this type.'),
+               default='',
+               help='Default resource_properties when creating a lease of '
+                    'this type.'),
 ]
 
 plugin_opts.extend(monitor.monitor_opts)
@@ -114,9 +114,9 @@ class DevicePlugin(base.BasePlugin):
         self._check_resource_providers()
 
     def _check_resource_providers(self):
-        """
-        Check if there is a reservation provider for
-        all enrolled devices. Lazy create if not.
+        """Check if there is a reservation provider for all enrolled devices.
+
+        Lazy create if not.
         """
         for blazar_device in db_api.device_list():
             if not blazar_device['reservable']:
@@ -766,6 +766,7 @@ class DeviceMonitorPlugin(monitor.GeneralMonitorPlugin):
 
     def notification_callback(self, event_type, payload):
         """Handle a notification message.
+
         It is used as a callback of a notification-based resource monitor.
         :param event_type: an event type of a notification.
         :param payload: a payload of a notification.

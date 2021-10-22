@@ -35,9 +35,9 @@ from blazar.utils import plugins as plugins_utils
 
 plugin_opts = [
     cfg.StrOpt('default_resource_properties',
-                default='',
-                help='Default resource_properties when creating a lease of '
-                     'this type.'),
+               default='',
+               help='Default resource_properties when creating a lease of '
+                    'this type.'),
 
 ]
 
