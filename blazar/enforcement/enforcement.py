@@ -41,16 +41,14 @@ class UsageEnforcement:
         self.load_filters()
 
     def load_filters(self):
-        self.enabled_filters = set()
+        self.enabled_filters = []
         for filter_name in CONF.enforcement.enabled_filters:
             _filter = getattr(filters, filter_name)
 
             if filter_name in filters.all_filters:
-                self.enabled_filters.add(_filter(conf=CONF))
+                self.enabled_filters.append(_filter(conf=CONF))
             else:
                 LOG.error("{} not in filters module.".format(filter_name))
-
-        self.enabled_filters = list(self.enabled_filters)
 
     def format_context(self, context, lease_values):
         ctx = context.to_dict()

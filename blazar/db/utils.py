@@ -120,6 +120,11 @@ def get_reservations_by_device_id(device_id, start_date, end_date):
     return IMPL.get_reservations_by_device_id(device_id, start_date, end_date)
 
 
+def get_reservations_by_device_ids(device_ids, start_date, end_date):
+    return IMPL.get_reservations_by_device_ids(device_ids, start_date,
+                                               end_date)
+
+
 def get_reservation_allocations_by_host_ids(host_ids, start_date, end_date,
                                             lease_id=None,
                                             reservation_id=None):
@@ -163,3 +168,7 @@ def get_reserved_periods(resource_id, start_date, end_date, duration,
     """Returns a list of reserved periods."""
     return IMPL.get_reserved_periods(resource_id, start_date, end_date,
                                      duration, resource_type=resource_type)
+
+
+def get_user_ids_for_lease_ids(lease_ids):
+    return IMPL.get_user_ids_for_lease_ids(lease_ids)

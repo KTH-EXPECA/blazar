@@ -15,7 +15,10 @@
 # under the License.
 
 import datetime
-from random import shuffle
+
+from oslo_config import cfg
+from oslo_utils import strutils
+from stevedore import named
 
 from blazar.db import api as db_api
 from blazar.db import exceptions as db_ex
@@ -23,13 +26,13 @@ from blazar.db import utils as db_utils
 from blazar.manager import exceptions as manager_ex
 from blazar.plugins import base
 from blazar.plugins import devices as plugin
+from blazar.plugins import monitor
 from blazar import status
 from blazar.utils.openstack import placement
 from blazar.utils import plugins as plugins_utils
-from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import strutils
-from stevedore import named
+from random import shuffle
+
 
 plugin_opts = [
     cfg.StrOpt('before_end',
@@ -46,7 +49,13 @@ plugin_opts = [
                help='The minimum interval [minutes] between the end of a '
                'lease and the start of the next lease for the same '
                'device. This interval is used for cleanup.'),
+    cfg.StrOpt('default_resource_properties',
+               default='',
+               help='Default resource_properties when creating a lease of '
+                    'this type.'),
 ]
+
+plugin_opts.extend(monitor.monitor_opts)
 
 CONF = cfg.CONF
 CONF.register_opts(plugin_opts, group=plugin.RESOURCE_TYPE)
@@ -55,6 +64,36 @@ LOG = logging.getLogger(__name__)
 before_end_options = ['', 'default', 'email']
 
 QUERY_TYPE_ALLOCATION = 'allocation'
+
+MONITOR_ARGS = {"resource_type": plugin.RESOURCE_TYPE}
+
+
+def _get_plugins():
+    """Return dict of resource-plugin class pairs."""
+    plugins = {}
+
+    extension_manager = named.NamedExtensionManager(
+        namespace='blazar.device.driver.plugins',
+        names=CONF.device.plugins,
+        invoke_on_load=False
+    )
+
+    for ext in extension_manager.extensions:
+        try:
+            plugin_obj = ext.plugin()
+        except Exception as e:
+            LOG.warning("Could not load {0} plugin "
+                        "for resource type {1} '{2}'".format(
+                            ext.name, ext.plugin.resource_type, e))
+        else:
+            if plugin_obj.device_driver in plugins:
+                msg = ("You have provided several plugins for "
+                       "one device driver in configuration file. "
+                       "Please set one plugin per device driver.")
+                raise manager_ex.PluginConfigurationError(error=msg)
+
+        plugins[plugin_obj.device_driver] = plugin_obj
+    return plugins
 
 
 class DevicePlugin(base.BasePlugin):
@@ -68,35 +107,34 @@ class DevicePlugin(base.BasePlugin):
 
     def __init__(self):
         super(DevicePlugin, self).__init__()
-        self.plugins = self._get_plugins()
+        self.plugins = _get_plugins()
+        self.monitor = DeviceMonitorPlugin(**MONITOR_ARGS)
+        self.monitor.register_reallocater(self._reallocate)
         self.placement_client = placement.BlazarPlacementClient()
+        self._check_resource_providers()
 
-    def _get_plugins(self):
-        """Return dict of resource-plugin class pairs."""
-        plugins = {}
+    def _check_resource_providers(self):
+        """Check if there is a reservation provider for all enrolled devices.
 
-        extension_manager = named.NamedExtensionManager(
-            namespace='blazar.device.driver.plugins',
-            names=CONF.device.plugins,
-            invoke_on_load=False
-        )
-
-        for ext in extension_manager.extensions:
-            try:
-                plugin_obj = ext.plugin()
-            except Exception as e:
-                LOG.warning("Could not load {0} plugin "
-                            "for resource type {1} '{2}'".format(
-                                ext.name, ext.plugin.resource_type, e))
-            else:
-                if plugin_obj.device_driver in plugins:
-                    msg = ("You have provided several plugins for "
-                           "one device driver in configuration file. "
-                           "Please set one plugin per device driver.")
-                    raise manager_ex.PluginConfigurationError(error=msg)
-
-            plugins[plugin_obj.device_driver] = plugin_obj
-        return plugins
+        Lazy create if not.
+        """
+        for blazar_device in db_api.device_list():
+            if not blazar_device['reservable']:
+                continue
+            name = blazar_device['name']
+            parent_rp = self.placement_client.get_resource_provider(
+                name)
+            reservation_rp = self.placement_client.get_reservation_provider(
+                name)
+            if not parent_rp:
+                LOG.warning("No resource provider found "
+                            "for blazar device {}".format(name))
+            elif not reservation_rp:
+                LOG.warning("No reservation provider found for blazar "
+                            "device {}. Auto-creating one. ".format(name))
+                rrp = self.placement_client.create_reservation_provider(name)
+                LOG.info(
+                    "Reservation provider {} has created.".format(rrp['name']))
 
     def reserve_resource(self, reservation_id, values):
         """Create reservation."""
@@ -193,20 +231,36 @@ class DevicePlugin(base.BasePlugin):
         for allocation in allocations:
             db_api.device_allocation_destroy(allocation['id'])
 
+        # If a device lease fails to start, the reservation trait is never
+        # added to the parent resource provider. If that lease is deleted,
+        # deleting the trait fails because it does not exist. This case
+        # will be handled by logging a message rather than failing.
+        reservation_id = device_reservation['reservation_id']
+        project_id = lease['project_id']
+        if not self.placement_client.reservation_trait_exists(
+                reservation_id, project_id):
+            LOG.warning("Reservation trait doesn't exist for reservation {0} "
+                        "and project {1}".format(reservation_id, project_id))
+            return
         resource_providers = self.placement_client. \
-            get_reservation_trait_resource_providers(
-                device_reservation['reservation_id'],
-                lease['project_id'])
+            get_reservation_trait_resource_providers(reservation_id,
+                                                     project_id)
         for rp in resource_providers:
             self.placement_client. \
                 dissociate_reservation_trait_with_resource_provider(
                     rp['uuid'],
-                    device_reservation['reservation_id'],
-                    lease['project_id'])
+                    reservation_id,
+                    project_id)
             device = self.get_device(rp['parent_provider_uuid'])
-            self.plugins[device['device_driver']].cleanup_device(device)
+            if device:
+                self.plugins[device['device_driver']].cleanup_device(device)
+            else:
+                LOG.warning(
+                    'Failed to retrieve device from resource provider %s',
+                    rp['parent_provider_uuid']
+                )
         self.placement_client.delete_reservation_trait(
-            device_reservation['reservation_id'], lease['project_id'])
+            reservation_id, project_id)
 
     def _get_extra_capabilities(self, device_id):
         extra_capabilities = {}
@@ -222,8 +276,13 @@ class DevicePlugin(base.BasePlugin):
 
     def get_device(self, device_id):
         device = db_api.device_get(device_id)
-        extra_capabilities = self._get_extra_capabilities(device_id)
-        if device is not None and extra_capabilities:
+        if device is None:
+            return device
+        return self.get_device_with_extra_capabilities(device)
+
+    def get_device_with_extra_capabilities(self, device):
+        extra_capabilities = self._get_extra_capabilities(device["id"])
+        if extra_capabilities:
             res = device.copy()
             res.update(extra_capabilities)
             return res
@@ -385,7 +444,7 @@ class DevicePlugin(base.BasePlugin):
         start_date = max(datetime.datetime.utcnow(), lease['start_date'])
         new_deviceids = self._matching_devices(
             device_reservation['resource_properties'],
-            '1-1', start_date, lease['end_date']
+            '1-1', start_date, lease['end_date'], lease['project_id']
         )
         if not new_deviceids:
             db_api.device_allocation_destroy(allocation['id'])
@@ -417,6 +476,7 @@ class DevicePlugin(base.BasePlugin):
         options['detail'] = detail
         devices_allocations = self.query_device_allocations(devices_id_list,
                                                             **options)
+        self.add_extra_allocation_info(devices_allocations)
         return [{"resource_id": device, "reservations": allocs}
                 for device, allocs in devices_allocations.items()]
 
@@ -470,13 +530,19 @@ class DevicePlugin(base.BasePlugin):
         return device_allocations
 
     def allocation_candidates(self, values):
+        if not values.get('resource_properties', ''):
+            values['resource_properties'] = CONF[
+                plugin.RESOURCE_TYPE
+            ].default_resource_properties
+
         self._check_params(values)
 
         device_ids = self._matching_devices(
             values['resource_properties'],
             values['count_range'],
             values['start_date'],
-            values['end_date']
+            values['end_date'],
+            values['project_id']
         )
 
         min_devices, _ = [int(n) for n in values['count_range'].split('-')]
@@ -522,7 +588,7 @@ class DevicePlugin(base.BasePlugin):
             values['on_start'] = 'default'
 
     def _matching_devices(self, resource_properties, count_range,
-                          start_date, end_date):
+                          start_date, end_date, project_id):
         """Return the matching devices (preferably not allocated)"""
         count_range = count_range.split('-')
         min_device = count_range[0]
@@ -540,6 +606,9 @@ class DevicePlugin(base.BasePlugin):
                 resource_properties)
         for device in db_api.device_get_all_by_queries(
                 filter_array):
+            device = self.get_device_with_extra_capabilities(device)
+            if not self.is_project_allowed(project_id, device):
+                continue
             if not db_api.device_allocation_get_all_by_values(
                     device_id=device['id']):
                 not_allocated_device_ids.append(device['id'])
@@ -593,7 +662,8 @@ class DevicePlugin(base.BasePlugin):
             device_ids = self._matching_devices(
                 resource_properties,
                 str(min_devices) + '-' + str(max_devices),
-                dates_after['start_date'], dates_after['end_date'])
+                dates_after['start_date'], dates_after['end_date'],
+                lease['project_id'])
             if len(device_ids) >= min_devices:
                 for device_id in device_ids:
                     db_api.device_allocation_create(
@@ -664,3 +734,71 @@ class DevicePlugin(base.BasePlugin):
             return db_api.device_get_all_by_queries(filter)
         else:
             return db_api.device_list()
+
+
+class DeviceMonitorPlugin(monitor.GeneralMonitorPlugin):
+    """Monitor plugin for device resource."""
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = \
+                super(DeviceMonitorPlugin, cls).__new__(cls, *args, **kwargs)
+            cls._instance.plugins = _get_plugins()
+        return cls._instance
+
+    def filter_allocations(self, reservation, device_ids):
+        return [alloc for alloc
+                in reservation['device_allocations']
+                if alloc['device_id'] in device_ids]
+
+    def get_reservations_by_resource_ids(self, device_ids,
+                                         interval_begin, interval_end):
+        return db_utils.get_reservations_by_device_ids(device_ids,
+                                                       interval_begin,
+                                                       interval_end)
+
+    def get_unreservable_resourses(self):
+        return db_api.unreservable_device_get_all_by_queries([])
+
+    def get_notification_event_types(self):
+        """Get event types of notification messages to handle."""
+        return []
+
+    def notification_callback(self, event_type, payload):
+        """Handle a notification message.
+
+        It is used as a callback of a notification-based resource monitor.
+        :param event_type: an event type of a notification.
+        :param payload: a payload of a notification.
+        :return: a dictionary of {reservation id: flags to update}
+                 e.g. {'de27786d-bd96-46bb-8363-19c13b2c6657':
+                       {'missing_resources': True}}
+        """
+        return {}
+
+    def set_reservable(self, resource, is_reservable):
+        db_api.device_update(resource["id"], {"reservable": is_reservable})
+        LOG.warn('%s %s.', resource["name"],
+                 "recovered" if is_reservable else "failed")
+
+    def poll_resource_failures(self):
+        """Check health of devices by calling driver service API.
+
+        :return: a list of failed devices, a list of recovered devices.
+        """
+        devices = db_api.device_get_all_by_filters({})
+
+        failed_devices = []
+        recovered_devices = []
+
+        for device_driver in self.plugins.keys():
+            try:
+                driver_failed_devices, driver_recovered_devices = \
+                    self.plugins[device_driver].poll_resource_failures(devices)
+                failed_devices.extend(driver_failed_devices)
+                recovered_devices.extend(driver_recovered_devices)
+            except AttributeError:
+                LOG.warning('poll_resource_failures is not implemented for {}'
+                            .format(device_driver))
+
+        return failed_devices, recovered_devices

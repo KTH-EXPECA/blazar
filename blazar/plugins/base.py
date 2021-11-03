@@ -17,6 +17,8 @@ import abc
 import collections
 
 from blazar.db import api as db_api
+from blazar.db import utils as db_utils
+from blazar.utils.openstack import keystone
 from oslo_config import cfg
 from oslo_log import log as logging
 import six
@@ -148,6 +150,40 @@ class BasePlugin(object):
             LOG.debug('Unsupported query key is specified in API request: %s',
                       unsupported)
         return options
+
+    def is_project_allowed(self, project_id, resource):
+        # If this resource has the extra capability "authorized_projects"
+        if "authorized_projects" in resource and \
+                isinstance(resource["authorized_projects"], str):
+            # Parse the field as a CSV, and check the resulting list
+            authorized_projects = resource["authorized_projects"].split(",")
+            return project_id in authorized_projects
+        return True
+
+    def add_extra_allocation_info(self, resource_allocations):
+        """Add extra information to allocations (to show in calendar)"""
+        extras = CONF.api.allocation_extras
+        for allocs in resource_allocations.values():
+            for alloc in allocs:
+                alloc["extras"] = {}
+        if "user_name" in extras:
+            ids = []
+            for allocations in resource_allocations.values():
+                for alloc in allocations:
+                    ids.append(alloc["lease_id"])
+            items = db_utils.get_user_ids_for_lease_ids(ids)
+            keystoneclient = keystone.BlazarKeystoneClient()
+            users = keystoneclient.users.list()
+            user_map = {user.id: user for user in users}
+            lease_to_name = dict()
+            for lease_id, user_id in items:
+                user = user_map[user_id]
+                lease_to_name[lease_id] = user.name
+
+            for allocations in resource_allocations.values():
+                for alloc in allocations:
+                    alloc["extras"]["user_name"] = \
+                        lease_to_name[alloc["lease_id"]]
 
 
 @six.add_metaclass(abc.ABCMeta)

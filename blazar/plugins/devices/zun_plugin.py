@@ -13,7 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
 from oslo_config import cfg
 
 from blazar.db import api as db_api
@@ -23,7 +22,6 @@ from blazar.utils.openstack import placement
 from blazar.utils.openstack import zun
 from oslo_log import log as logging
 from zunclient import exceptions as zun_ex
-
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -88,12 +86,52 @@ class ZunPlugin(zun.ZunClientWrapper):
         return device['id']
 
     def cleanup_device(self, device):
-        for container in self.zun.containers.list(host=device['name']):
+        try:
+            # TODO(jason): zunclient is broken when passing both all_projects
+            # and 'host' as a keyword argument; the parameters are encoded
+            # like /v1/containers/?all_projects=1?host=..., which is malformed.
+            # Passing in 'host' to the list() function would however probably
+            # be more efficient.
+            host_containers = [
+                container for container in
+                self.zun.containers.list(all_projects=True)
+                if container.host == device['name']
+            ]
+        except zun_ex.ClientException as exc:
+            LOG.error((
+                'During lease teardown, failed to enumerate containers. '
+                'Containers may need to be manually cleaned up on %s.'
+                'Error: %s'
+            ), device['name'], exc)
+            host_containers = []
+
+        for container in host_containers:
             try:
-                self.zun.containers.delete(container['uuid'])
+                self.zun.containers.delete(
+                    container.uuid, force=True, stop=True)
             except zun_ex.NotFound:
                 LOG.info('Could not find container %s, may have been deleted '
-                         'concurrently.', container['container_id'])
+                         'concurrently.', container.name)
             except Exception as e:
                 LOG.exception('Failed to delete %s: %s.',
-                              container['container_id'], str(e))
+                              container.name, str(e))
+
+    def poll_resource_failures(self, devices):
+        failed_devices = []
+        recovered_devices = []
+
+        zun_compute_services = {s.host: s for s in self.zun.services.list()}
+        zun_devices = {d["name"]: d for d in devices
+                       if d.get("device_driver") == self.device_driver}
+
+        for device_name, device in zun_devices.items():
+            is_reservable = device.get("reservable")
+            cs = zun_compute_services.get(device_name)
+            if is_reservable and cs and \
+               cs.state == 'down' or cs.disabled:
+                    failed_devices.append(device)
+            if not is_reservable and cs and \
+               cs.state == 'up' and not cs.disabled:
+                    recovered_devices.append(device)
+
+        return failed_devices, recovered_devices

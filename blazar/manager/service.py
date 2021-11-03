@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import datetime
-import re
 
 from functools import lru_cache
 
@@ -55,7 +54,7 @@ manager_opts = [
                default=1,
                min=0,
                max=50,
-               help='Number of times to retry an event action.')
+               help='Number of times to retry an event action.'),
 ]
 
 CONF = cfg.CONF
@@ -92,25 +91,6 @@ class ManagerService(service_utils.RPCServer):
                                stop_on_exception=False)
         for m in self.monitors:
             m.start_monitoring()
-
-        # check if there is a reservation provider for all resource providers
-        # in placement
-        # parent_resource_providers = []
-        # reservation_resource_providers = {}
-        # for rp in self.placement_client.list_resource_providers():
-        #     if re.match('^blazar_(.*)$', rp['name']):
-        #         reservation_resource_providers[rp['parent_provider_uuid']] = rp
-        #     else:
-        #         parent_resource_providers.append(rp)
-
-        # for rp in parent_resource_providers:
-        #     if rp['uuid'] not in reservation_resource_providers:
-        #         LOG.warning("Resource provider {} has no reservation "
-        #                     "provider. Auto-creating one.".format(rp['name']))
-        #         rrp = self.placement_client.create_reservation_provider(
-        #             rp['name'])
-        #         LOG.info(
-        #             "Reservation provider {} created.".format(rrp['name']))
 
 
     def _setup_actions(self):
@@ -424,6 +404,7 @@ class ManagerService(service_utils.RPCServer):
                         reservation['lease_id'] = lease['id']
                         reservation['start_date'] = lease['start_date']
                         reservation['end_date'] = lease['end_date']
+                        reservation['project_id'] = lease['project_id']
                         self._create_reservation(reservation)
                 except Exception:
                     with save_and_reraise_exception():
@@ -679,7 +660,11 @@ class ManagerService(service_utils.RPCServer):
         lease = self.get_lease(lease_id)
         allocations = self._existing_allocations(lease['reservations'])
         try:
-            self.enforcement.on_end(context.current(), lease, allocations)
+            # no rpc call with authentication context, i.e.
+            # context.current() doesn't work here.
+            # so need to get context from the lease trust.
+            self.enforcement.on_end(trusts.create_ctx_from_trust(
+                lease['trust_id']), lease, allocations)
         except Exception as e:
             LOG.error(e)
 
@@ -773,6 +758,7 @@ class ManagerService(service_utils.RPCServer):
             resource_type = reservation['resource_type']
             res['start_date'] = lease['start_date']
             res['end_date'] = lease['end_date']
+            res['project_id'] = lease['project_id']
 
             if resource_type not in self.plugins:
                 raise exceptions.UnsupportedResourceType(
