@@ -15,6 +15,8 @@
 
 import datetime
 
+from functools import cache
+
 from oslo_config import cfg
 from oslo_utils.excutils import save_and_reraise_exception
 from stevedore import enabled
@@ -74,7 +76,7 @@ class ManagerService(service_utils.RPCServer):
     def __init__(self):
         target = manager.get_target()
         super(ManagerService, self).__init__(target)
-        self.plugins = self._get_plugins()
+        self.plugins = self.get_plugins()
         self.resource_actions = self._setup_actions()
         self.monitors = monitor.load_monitors(self.plugins)
         self.enforcement = enforcement.UsageEnforcement()
@@ -90,40 +92,25 @@ class ManagerService(service_utils.RPCServer):
         for m in self.monitors:
             m.start_monitoring()
 
-    def _get_plugins(self):
-        """Return dict of resource-plugin class pairs."""
-        config_plugins = CONF.manager.plugins
-        plugins = {}
+        # check if there is a reservation provider for all resource providers
+        # in placement
+        # parent_resource_providers = []
+        # reservation_resource_providers = {}
+        # for rp in self.placement_client.list_resource_providers():
+        #     if re.match('^blazar_(.*)$', rp['name']):
+        #         reservation_resource_providers[rp['parent_provider_uuid']] = rp
+        #     else:
+        #         parent_resource_providers.append(rp)
 
-        extension_manager = enabled.EnabledExtensionManager(
-            check_func=lambda ext: ext.name in config_plugins,
-            namespace='blazar.resource.plugins',
-            invoke_on_load=False
-        )
+        # for rp in parent_resource_providers:
+        #     if rp['uuid'] not in reservation_resource_providers:
+        #         LOG.warning("Resource provider {} has no reservation "
+        #                     "provider. Auto-creating one.".format(rp['name']))
+        #         rrp = self.placement_client.create_reservation_provider(
+        #             rp['name'])
+        #         LOG.info(
+        #             "Reservation provider {} created.".format(rrp['name']))
 
-        invalid_plugins = (set(config_plugins) -
-                           set([ext.name for ext
-                                in extension_manager.extensions]))
-        if invalid_plugins:
-            raise common_ex.BlazarException('Invalid plugin names are '
-                                            'specified: %s' % invalid_plugins)
-
-        for ext in extension_manager.extensions:
-            try:
-                plugin_obj = ext.plugin()
-            except Exception as e:
-                LOG.warning("Could not load {0} plugin "
-                            "for resource type {1} '{2}'".format(
-                                ext.name, ext.plugin.resource_type, e))
-            else:
-                if plugin_obj.resource_type in plugins:
-                    msg = ("You have provided several plugins for "
-                           "one resource type in configuration file. "
-                           "Please set one plugin per resource type.")
-                    raise exceptions.PluginConfigurationError(error=msg)
-
-                plugins[plugin_obj.resource_type] = plugin_obj
-        return plugins
 
     def _setup_actions(self):
         """Setup actions for each resource type supported.
@@ -886,19 +873,40 @@ class ManagerService(service_utils.RPCServer):
 
             db_api.event_update(event['id'], update_values)
 
-    def call(self, resource_type, method, *args, **kwargs):
-        fn = None
-        try:
+@cache
+def get_plugins():
+    """Return dict of resource-plugin class pairs."""
+    if _plugins is None:
+        config_plugins = CONF.manager.plugins
+        plugins = {}
+
+        extension_manager = enabled.EnabledExtensionManager(
+            check_func=lambda ext: ext.name in config_plugins,
+            namespace='blazar.resource.plugins',
+            invoke_on_load=False
+        )
+
+        invalid_plugins = (set(config_plugins) -
+                           set([ext.name for ext
+                                in extension_manager.extensions]))
+        if invalid_plugins:
+            raise common_ex.BlazarException('Invalid plugin names are '
+                                            'specified: %s' % invalid_plugins)
+
+        for ext in extension_manager.extensions:
             try:
-                fn = getattr(self.plugins[resource_type], method)
-            except KeyError:
-                LOG.error("Plugin with resource type %s not found",
-                          resource_type)
-                raise exceptions.UnsupportedResourceType(
-                    resource_type=resource_type)
-        except AttributeError:
-            LOG.error("Plugin %s doesn't include method %s",
-                      self.plugins[resource_type], method)
-        if fn is not None:
-            return fn(*args, **kwargs)
-        raise AttributeError(f"{resource_type} {method}")
+                plugin_obj = ext.plugin()
+            except Exception as e:
+                LOG.warning("Could not load {0} plugin "
+                            "for resource type {1} '{2}'".format(
+                                ext.name, ext.plugin.resource_type, e))
+            else:
+                if plugin_obj.resource_type in plugins:
+                    msg = ("You have provided several plugins for "
+                           "one resource type in configuration file. "
+                           "Please set one plugin per resource type.")
+                    raise exceptions.PluginConfigurationError(error=msg)
+
+                plugins[plugin_obj.resource_type] = plugin_obj
+        _plugins = plugins
+    return _plugins

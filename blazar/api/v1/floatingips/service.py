@@ -13,19 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from blazar.cmd.manager import ManagerServiceSingleton
 from blazar import policy
+from blazar.manager.service import get_plugins
 from blazar.utils import trusts
 
 
 class API(object):
     def __init__(self):
-        self.call_manager = ManagerServiceSingleton("virtual:floatingip")
+        self.plugin = get_plugins()["virtual:floatingip"]
 
     @policy.authorize('floatingips', 'get')
     def get_floatingips(self):
         """List all existing floatingip."""
-        return self.call_manager("list_floatingip")
+        return self.plugin.list_floatingip()
 
     @policy.authorize('floatingips', 'post')
     @trusts.use_trust_auth()
@@ -36,7 +36,7 @@ class API(object):
         :type data: dict
         """
 
-        return self.call_manager("create_floatingip", data)
+        return self.plugin.create_floatingip(data)
 
     @policy.authorize('floatingips', 'get')
     def get_floatingip(self, floatingip_id):
@@ -45,7 +45,7 @@ class API(object):
         :param floatingip_id: ID of the floatingip in Blazar DB.
         :type floatingip_id: str
         """
-        return self.call_manager("get_floatingip", floatingip_id)
+        return self.plugin.get_floatingip(floatingip_id)
 
     @policy.authorize('floatingips', 'delete')
     def delete_floatingip(self, floatingip_id):
@@ -54,4 +54,4 @@ class API(object):
         :param floatingip_id: ID of the floatingip in Blazar DB.
         :type floatingip_id: str
         """
-        self.call_manager("delete_floatingip", floatingip_id)
+        self.plugin.delete_floatingip(floatingip_id)
