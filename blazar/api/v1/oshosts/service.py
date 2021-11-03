@@ -14,19 +14,19 @@
 # limitations under the License.
 
 from blazar import context
-from blazar.cmd.manager import ManagerServiceSingleton
 from blazar import policy
+from blazar.manager.service import get_plugins
 from blazar.utils import trusts
 
 
 class API(object):
     def __init__(self):
-        self.call_manager = ManagerServiceSingleton("physical:host")
+        self.plugin = get_plugins()["physical:host"]
 
     @policy.authorize('oshosts', 'get')
     def get_computehosts(self, query):
         """List all existing computehosts."""
-        return self.call_manager("list_computehosts", query=query)
+        return self.plugin.list_computehosts(query=query)
 
     @policy.authorize('oshosts', 'post')
     @trusts.use_trust_auth()
@@ -37,7 +37,7 @@ class API(object):
         :type data: dict
         """
 
-        return self.call_manager("create_computehost", data)
+        return self.plugin.create_computehost(data)
 
     @policy.authorize('oshosts', 'get')
     def get_computehost(self, host_id):
@@ -46,7 +46,7 @@ class API(object):
         :param host_id: ID of the computehost in Blazar DB.
         :type host_id: str
         """
-        return self.call_manager("get_computehost", host_id)
+        return self.plugin.get_computehost(host_id)
 
     @policy.authorize('oshosts', 'put')
     def update_computehost(self, host_id, data):
@@ -57,7 +57,7 @@ class API(object):
         :param data: New computehost characteristics.
         :type data: dict
         """
-        return self.call_manager("update_computehost", host_id, data)
+        return self.plugin.update_computehost(host_id, data)
 
     @policy.authorize('oshosts', 'delete')
     def delete_computehost(self, host_id):
@@ -66,7 +66,7 @@ class API(object):
         :param host_id: ID of the computehost in Blazar DB.
         :type host_id: str
         """
-        self.call_manager("delete_computehost", host_id)
+        self.plugin.delete_computehost(host_id)
 
     @policy.authorize('oshosts', 'get_allocations')
     def list_allocations(self, query):
@@ -81,7 +81,7 @@ class API(object):
         if policy.enforce(ctx, 'admin', {}, do_raise=False):
             detail = True
 
-        return self.call_manager("list_allocations", query, detail=detail)
+        return self.plugin.list_allocations(query, detail=detail)
 
     @policy.authorize('oshosts', 'get_allocations')
     def get_allocations(self, host_id, query):
@@ -92,19 +92,19 @@ class API(object):
         :param query: parameters to query allocations
         :type query: dict
         """
-        return self.call_manager("get_allocations", host_id, query)
+        return self.plugin.get_allocations(host_id, query)
 
     @policy.authorize('oshosts', 'reallocate')
     def reallocate(self, host_id, data):
         """Exchange host from allocations."""
-        return self.call_manager("reallocate", host_id, data)
+        return self.plugin.reallocate(host_id, data)
 
     @policy.authorize('oshosts', 'get_resource_properties')
     def list_resource_properties(self, query):
         """List resource properties for hosts."""
-        return self.call_manager("list_resource_properties", query)
+        return self.plugin.list_resource_properties(query)
 
     @policy.authorize('oshosts', 'patch_resource_properties')
     def update_resource_property(self, property_name, data):
         """Update a host resource property."""
-        return self.call_manager("update_resource_property", property_name, data)
+        return self.plugin.update_resource_property(property_name, data)

@@ -16,6 +16,8 @@
 import datetime
 import re
 
+from functools import cache
+
 from oslo_config import cfg
 from oslo_utils.excutils import save_and_reraise_exception
 from stevedore import enabled
@@ -110,40 +112,6 @@ class ManagerService(service_utils.RPCServer):
         #         LOG.info(
         #             "Reservation provider {} created.".format(rrp['name']))
 
-    def _get_plugins(self):
-        """Return dict of resource-plugin class pairs."""
-        config_plugins = CONF.manager.plugins
-        plugins = {}
-
-        extension_manager = enabled.EnabledExtensionManager(
-            check_func=lambda ext: ext.name in config_plugins,
-            namespace='blazar.resource.plugins',
-            invoke_on_load=False
-        )
-
-        invalid_plugins = (set(config_plugins) -
-                           set([ext.name for ext
-                                in extension_manager.extensions]))
-        if invalid_plugins:
-            raise common_ex.BlazarException('Invalid plugin names are '
-                                            'specified: %s' % invalid_plugins)
-
-        for ext in extension_manager.extensions:
-            try:
-                plugin_obj = ext.plugin()
-            except Exception as e:
-                LOG.warning("Could not load {0} plugin "
-                            "for resource type {1} '{2}'".format(
-                                ext.name, ext.plugin.resource_type, e))
-            else:
-                if plugin_obj.resource_type in plugins:
-                    msg = ("You have provided several plugins for "
-                           "one resource type in configuration file. "
-                           "Please set one plugin per resource type.")
-                    raise exceptions.PluginConfigurationError(error=msg)
-
-                plugins[plugin_obj.resource_type] = plugin_obj
-        return plugins
 
     def _setup_actions(self):
         """Setup actions for each resource type supported.
@@ -899,19 +867,40 @@ class ManagerService(service_utils.RPCServer):
 
             db_api.event_update(event['id'], update_values)
 
-    def call(self, resource_type, method, *args, **kwargs):
-        fn = None
-        try:
+@cache
+def get_plugins():
+    """Return dict of resource-plugin class pairs."""
+    if _plugins is None:
+        config_plugins = CONF.manager.plugins
+        plugins = {}
+
+        extension_manager = enabled.EnabledExtensionManager(
+            check_func=lambda ext: ext.name in config_plugins,
+            namespace='blazar.resource.plugins',
+            invoke_on_load=False
+        )
+
+        invalid_plugins = (set(config_plugins) -
+                           set([ext.name for ext
+                                in extension_manager.extensions]))
+        if invalid_plugins:
+            raise common_ex.BlazarException('Invalid plugin names are '
+                                            'specified: %s' % invalid_plugins)
+
+        for ext in extension_manager.extensions:
             try:
-                fn = getattr(self.plugins[resource_type], method)
-            except KeyError:
-                LOG.error("Plugin with resource type %s not found",
-                          resource_type)
-                raise exceptions.UnsupportedResourceType(
-                    resource_type=resource_type)
-        except AttributeError:
-            LOG.error("Plugin %s doesn't include method %s",
-                      self.plugins[resource_type], method)
-        if fn is not None:
-            return fn(*args, **kwargs)
-        raise AttributeError(f"{resource_type} {method}")
+                plugin_obj = ext.plugin()
+            except Exception as e:
+                LOG.warning("Could not load {0} plugin "
+                            "for resource type {1} '{2}'".format(
+                                ext.name, ext.plugin.resource_type, e))
+            else:
+                if plugin_obj.resource_type in plugins:
+                    msg = ("You have provided several plugins for "
+                           "one resource type in configuration file. "
+                           "Please set one plugin per resource type.")
+                    raise exceptions.PluginConfigurationError(error=msg)
+
+                plugins[plugin_obj.resource_type] = plugin_obj
+        _plugins = plugins
+    return _plugins
