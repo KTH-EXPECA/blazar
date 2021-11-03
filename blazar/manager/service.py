@@ -16,7 +16,7 @@
 import datetime
 import re
 
-from functools import cache
+from functools import lru_cache
 
 from oslo_config import cfg
 from oslo_utils.excutils import save_and_reraise_exception
@@ -77,7 +77,7 @@ class ManagerService(service_utils.RPCServer):
     def __init__(self):
         target = manager.get_target()
         super(ManagerService, self).__init__(target)
-        self.plugins = self._get_plugins()
+        self.plugins = get_plugins()
         self.resource_actions = self._setup_actions()
         self.monitors = monitor.load_monitors(self.plugins)
         self.enforcement = enforcement.UsageEnforcement()
@@ -867,40 +867,38 @@ class ManagerService(service_utils.RPCServer):
 
             db_api.event_update(event['id'], update_values)
 
-@cache
+@lru_cache(maxsize=None)
 def get_plugins():
     """Return dict of resource-plugin class pairs."""
-    if _plugins is None:
-        config_plugins = CONF.manager.plugins
-        plugins = {}
+    config_plugins = CONF.manager.plugins
+    plugins = {}
 
-        extension_manager = enabled.EnabledExtensionManager(
-            check_func=lambda ext: ext.name in config_plugins,
-            namespace='blazar.resource.plugins',
-            invoke_on_load=False
-        )
+    extension_manager = enabled.EnabledExtensionManager(
+        check_func=lambda ext: ext.name in config_plugins,
+        namespace='blazar.resource.plugins',
+        invoke_on_load=False
+    )
 
-        invalid_plugins = (set(config_plugins) -
-                           set([ext.name for ext
-                                in extension_manager.extensions]))
-        if invalid_plugins:
-            raise common_ex.BlazarException('Invalid plugin names are '
-                                            'specified: %s' % invalid_plugins)
+    invalid_plugins = (set(config_plugins) -
+                       set([ext.name for ext
+                            in extension_manager.extensions]))
+    if invalid_plugins:
+        raise common_ex.BlazarException('Invalid plugin names are '
+                                        'specified: %s' % invalid_plugins)
 
-        for ext in extension_manager.extensions:
-            try:
-                plugin_obj = ext.plugin()
-            except Exception as e:
-                LOG.warning("Could not load {0} plugin "
-                            "for resource type {1} '{2}'".format(
-                                ext.name, ext.plugin.resource_type, e))
-            else:
-                if plugin_obj.resource_type in plugins:
-                    msg = ("You have provided several plugins for "
-                           "one resource type in configuration file. "
-                           "Please set one plugin per resource type.")
-                    raise exceptions.PluginConfigurationError(error=msg)
+    for ext in extension_manager.extensions:
+        try:
+            plugin_obj = ext.plugin()
+        except Exception as e:
+            LOG.warning("Could not load {0} plugin "
+                        "for resource type {1} '{2}'".format(
+                            ext.name, ext.plugin.resource_type, e))
+        else:
+            if plugin_obj.resource_type in plugins:
+                msg = ("You have provided several plugins for "
+                       "one resource type in configuration file. "
+                       "Please set one plugin per resource type.")
+                raise exceptions.PluginConfigurationError(error=msg)
 
-                plugins[plugin_obj.resource_type] = plugin_obj
-        _plugins = plugins
-    return _plugins
+            plugins[plugin_obj.resource_type] = plugin_obj
+    return plugins
