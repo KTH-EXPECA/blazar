@@ -92,7 +92,6 @@ class ManagerService(service_utils.RPCServer):
         for m in self.monitors:
             m.start_monitoring()
 
-
     def _setup_actions(self):
         """Setup actions for each resource type supported.
 
@@ -852,6 +851,7 @@ class ManagerService(service_utils.RPCServer):
                 notifications.append('event.before_end_lease.stop')
 
             db_api.event_update(event['id'], update_values)
+
 
 @lru_cache(maxsize=None)
 def get_plugins():
