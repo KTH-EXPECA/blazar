@@ -141,9 +141,17 @@ class HypervisorNotFound(exceptions.BlazarException):
     msg_fmt = _("Aggregate '%(pool)s' not found!")
 
 
-class NotEnoughHostsAvailable(exceptions.BlazarException):
+class NotEnoughResourcesAvailable(exceptions.BlazarException):
     restore_lease_status = True
+
+
+class NotEnoughHostsAvailable(NotEnoughResourcesAvailable):
     msg_fmt = _("Not enough hosts available")
+
+
+class NotEnoughResourcesDefaultProperties(exceptions.BlazarException):
+    restore_lease_status = True
+    msg_fmt = _("Not enough resources available with query %(params)s")
 
 
 class MalformedParameter(exceptions.BlazarException):
@@ -220,7 +228,7 @@ class TooLongFloatingIPs(exceptions.InvalidInput):
                 "required_floatingips.")
 
 
-class NotEnoughFloatingIPAvailable(exceptions.InvalidInput):
+class NotEnoughFloatingIPAvailable(NotEnoughResourcesAvailable):
     msg_fmt = _("Not enough floating IPs available")
 
 
@@ -249,7 +257,7 @@ class InvalidNetwork(exceptions.NotAuthorized):
     msg_fmt = _("Invalid values for network %(network)s")
 
 
-class NotEnoughNetworksAvailable(exceptions.BlazarException):
+class NotEnoughNetworksAvailable(NotEnoughResourcesAvailable):
     restore_lease_status = True
     msg_fmt = _("Not enough networks available")
 
@@ -275,7 +283,7 @@ class DeviceNotFound(exceptions.NotFound):
     msg_fmt = _("Device '%(device)s' not found!")
 
 
-class NotEnoughDevicesAvailable(exceptions.BlazarException):
+class NotEnoughDevicesAvailable(NotEnoughResourcesAvailable):
     restore_lease_status = True
     msg_fmt = _("Not enough devices available")
 

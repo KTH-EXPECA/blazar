@@ -121,6 +121,17 @@ class BasePlugin(object):
         else:
             return [dict(property=k) for k, v in resource_properties.items()]
 
+    def update_default_parameters(self, values):
+        """Update values with any defaults"""
+        pass
+
+    def add_default_resource_properties(self, values):
+        if not values.get('resource_properties', ''):
+            values['resource_properties'] = CONF[
+                self.resource_type
+            ].default_resource_properties
+        return values
+
     def update_resource_property(self, property_name, values):
         return db_api.resource_property_update(
             self.resource_type, property_name, values)
