@@ -37,8 +37,7 @@ class ManagerServiceSingleton:
     def __new__(self, resource_type=None):
         if resource_type:
             return partial(
-                ManagerServiceSingleton._instance.call, resource_type
-            )
+                ManagerServiceSingleton._instance.call, resource_type)
         return ManagerServiceSingleton._instance
 
 
