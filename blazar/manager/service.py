@@ -873,6 +873,7 @@ class ManagerService(service_utils.RPCServer):
 
             db_api.event_update(event['id'], update_values)
 
+
 @lru_cache(maxsize=None)
 def get_plugins():
     """Return dict of resource-plugin class pairs."""
