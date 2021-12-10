@@ -493,8 +493,9 @@ class ManagerService(service_utils.RPCServer):
 
         if reservations:
             new_reservations = reservations
+            values["project_id"] = lease["project_id"]
             new_allocs = self._allocation_candidates(values,
-                                                     existing_reservations)
+                                                     new_reservations)
         else:
             # User is not updating reservation parameters, e.g., is only
             # adjusting lease start/end dates.
