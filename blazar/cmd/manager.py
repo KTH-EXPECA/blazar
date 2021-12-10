@@ -32,13 +32,15 @@ from blazar.utils import service as service_utils
 
 
 class ManagerServiceSingleton:
-    _instance = manager_service.ManagerService()
+    _instance = None
 
     def __new__(self, resource_type=None):
+        if not ManagerServiceSingleton._instance:
+            ManagerServiceSingleton._instance = \
+                manager_service.ManagerService()
         if resource_type:
             return partial(
-                ManagerServiceSingleton._instance.call, resource_type
-            )
+                ManagerServiceSingleton._instance.call, resource_type)
         return ManagerServiceSingleton._instance
 
 
