@@ -242,31 +242,6 @@ def get_reservation_allocations_by_fip_ids(fip_ids, start_date, end_date,
     return reservations
 
 
-def get_reservation_allocations_by_fip_ids(fip_ids, start_date, end_date,
-                                           lease_id=None, reservation_id=None):
-    session = get_session()
-    reservations = get_reservations_for_allocations(
-        session, start_date, end_date, lease_id, reservation_id)
-
-    allocations_query = (session.query(
-        models.FloatingIPAllocation.reservation_id,
-        models.FloatingIPAllocation.floatingip_id)
-        .filter(models.FloatingIPAllocation.deleted.is_(None))
-        .filter(models.FloatingIPAllocation.floatingip_id.in_(fip_ids))
-        .filter(models.FloatingIPAllocation.reservation_id.in_(
-            list(set([x['id'] for x in reservations])))))
-
-    allocations = defaultdict(list)
-
-    for row in allocations_query.all():
-        allocations[row[0]].append(row[1])
-
-    for r in reservations:
-        r['floatingip_ids'] = allocations[r['id']]
-
-    return reservations
-
-
 def get_reservation_allocations_by_network_ids(network_ids, start_date,
                                                end_date, lease_id=None,
                                                reservation_id=None):

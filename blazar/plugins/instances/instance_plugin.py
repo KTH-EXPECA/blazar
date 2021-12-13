@@ -18,7 +18,6 @@ from novaclient import exceptions as nova_exceptions
 from oslo_config import cfg
 from oslo_utils import strutils
 from oslo_utils.strutils import bool_from_string
-import six
 
 from blazar import context
 from blazar.db import api as db_api
