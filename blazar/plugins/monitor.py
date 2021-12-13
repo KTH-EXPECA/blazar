@@ -20,8 +20,8 @@ from oslo_config import cfg
 import six
 
 import abc
-from blazar.plugins import base
 from blazar.manager import exceptions as manager_ex
+from blazar.plugins import base
 from blazar import status
 from oslo_log import log as logging
 
@@ -167,7 +167,7 @@ class GeneralMonitorPlugin(base.BaseMonitorPlugin):
                             reservation_flags[reservation_id] = {}
                         reservation_flags[reservation_id].update(
                             {'missing_resources': True})
-                except manager_ex.HostHavingServers:
+                except manager_ex.ResourceBusy:
                     LOG.info(
                         "Cannot heal reservation %s, found servers",
                         reservation["id"]
