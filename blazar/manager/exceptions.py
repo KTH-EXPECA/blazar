@@ -69,8 +69,11 @@ class MultipleHostsFound(exceptions.BlazarException):
     msg_fmt = _("Multiple Hosts found for pattern '%(host)s'")
 
 
-class HostHavingServers(exceptions.BlazarException):
+class ResourceBusy(exceptions.BlazarException):
     code = 409
+
+
+class HostHavingServers(ResourceBusy):
     msg_fmt = _("Servers [%(servers)s] found for host %(host)s")
 
 

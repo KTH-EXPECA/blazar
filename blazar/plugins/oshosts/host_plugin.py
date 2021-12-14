@@ -244,6 +244,15 @@ class PhysicalHostPlugin(base.BasePlugin, nova.NovaClientWrapper):
         # Remove the old host from the aggregate.
         if reservation['status'] == status.reservation.ACTIVE:
             host = db_api.host_get(allocation['compute_host_id'])
+
+            servers = self.nova.servers.list(search_opts={
+                "node": host['hypervisor_hostname'], "all_tenants": 1})
+            if len(servers) != 0:
+                raise manager_ex.HostHavingServers(
+                    servers=[s.name for s in servers],
+                    host=host['hypervisor_hostname']
+                )
+
             pool.remove_computehost(h_reservation['aggregate_id'],
                                     host['hypervisor_hostname'])
 

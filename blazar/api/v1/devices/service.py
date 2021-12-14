@@ -71,7 +71,7 @@ class API(object):
     @policy.authorize('devices', 'reallocate')
     def reallocate(self, device_id, data):
         """Exchange device from allocations."""
-        return self.plugin.reallocate(device_id, data)
+        return self.plugin.reallocate_device(device_id, data)
 
     @policy.authorize('devices', 'get_allocations')
     def list_allocations(self, query):
