@@ -266,7 +266,6 @@ class ManagerService(service_utils.RPCServer):
             start_date = now
         else:
             start_date = self._date_from_string(start_date)
-
         if end_date == 'now':
             end_date = now
         else:
