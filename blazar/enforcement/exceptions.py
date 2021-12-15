@@ -21,3 +21,9 @@ class MaxLeaseDurationException(exceptions.NotAuthorized):
     msg_fmt = _('Lease duration of %(lease_duration)s seconds must be less '
                 'than or equal to the maximum lease duration of '
                 '%(max_duration)s seconds.')
+
+
+class MaxLeaseUpdateWindowException(exceptions.NotAuthorized):
+    code = 400
+    msg_fmt = _('Lease can only be extended within %(extension_window)s '
+                'seconds of the leases current end time.')

@@ -178,6 +178,8 @@ class MaxLeaseDurationTestCase(tests.TestCase):
         del new_lease_values['reservations']
         ctx = context.current()
 
+        cfg.CONF.set_override('max_lease_duration', 1, group='enforcement')
+
         with mock.patch.object(datetime, 'datetime',
                                mock.Mock(wraps=datetime.datetime)) as patched:
             patched.utcnow.return_value = datetime.datetime(2014, 1, 1, 1, 1)
@@ -186,6 +188,8 @@ class MaxLeaseDurationTestCase(tests.TestCase):
                               new_lease_values, current_allocations,
                               allocation_candidates, reservations,
                               new_reservations)
+
+        self.cfg.CONF.clear_override('max_lease_duration', group='enforcement')
 
     def test_check_update_active_lease_allowed(self):
         current_allocations = {'virtual:instance': [get_fake_host('1')]}

@@ -210,11 +210,10 @@ def get_reservation_allocations_by_host_ids(host_ids, start_date, end_date,
     for row in allocations_query.all():
         allocations[row[0]].append(row[1])
 
-    allocs = []
     for r in reservations:
-        allocs.append((r['id'], r['lease_id'], allocations[r['id']][0]))
+        r['host_ids'] = allocations[r['id']]
 
-    return allocs
+    return reservations
 
 
 def get_reservation_allocations_by_fip_ids(fip_ids, start_date, end_date,

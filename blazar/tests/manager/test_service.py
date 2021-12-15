@@ -146,6 +146,8 @@ class ServiceTestCase(tests.TestCase):
             importlib.reload(service)
         self.service = service
         self.manager = self.service.ManagerService()
+        self.get_plugins = self.service.get_plugins
+        self.get_plugins.cache_clear()
         self.enforcement = self.patch(self.manager, 'enforcement')
 
         self.lease_id = '11-22-33'
@@ -232,7 +234,7 @@ class ServiceTestCase(tests.TestCase):
             FakeExtension("fake.plugin.2", FakePlugin)]
 
         self.assertRaises(manager_ex.PluginConfigurationError,
-                          self.manager._get_plugins)
+                          self.get_plugins)
 
     def test_plugins_that_fail_to_init(self):
         config = self.patch(cfg.CONF, "manager")
@@ -241,7 +243,7 @@ class ServiceTestCase(tests.TestCase):
             FakeExtension("fake.plugin.1", FakePlugin),
             FakeExtension("fake.plugin.2", FakePluginRaisesException)]
 
-        plugins = self.manager._get_plugins()
+        plugins = self.get_plugins()
         self.assertIn("fake:plugin", plugins)
         self.assertNotIn("fake:plugin:raise", plugins)
 
@@ -250,7 +252,7 @@ class ServiceTestCase(tests.TestCase):
         config.plugins = ['foo.plugin']
 
         self.assertRaises(exceptions.BlazarException,
-                          self.manager._get_plugins)
+                          self.get_plugins)
 
     def test_setup_actions(self):
         actions = {'virtual:instance':
@@ -1442,7 +1444,7 @@ class ServiceTestCase(tests.TestCase):
         self.manager.delete_lease(self.lease_id)
 
         self.lease_destroy.assert_called_once_with(self.lease_id)
-        self.fake_plugin.on_end.assert_called_with('111')
+        self.fake_plugin.on_end.assert_called_with('111', lease=self.lease)
         enforcement_on_end.assert_called_once()
 
     def test_delete_lease_after_ending(self):
@@ -1491,7 +1493,7 @@ class ServiceTestCase(tests.TestCase):
             mock.call('fake', {'status': 'IN_PROGRESS'}),
             mock.call('fake', {'status': 'DONE'}),
         ])
-        self.fake_plugin.on_end.assert_called_with('111')
+        self.fake_plugin.on_end.assert_called_with('111', lease=self.lease)
         self.lease_destroy.assert_called_once_with(self.lease_id)
         enforcement_on_end.assert_called_once()
 
@@ -1512,10 +1514,12 @@ class ServiceTestCase(tests.TestCase):
 
         self.manager.delete_lease(self.lease_id)
 
-        self.event_update.assert_called_once_with('fake',
-                                                  {'status': 'IN_PROGRESS'})
+        self.event_update.assert_has_calls([
+            mock.call('fake', {'status': 'IN_PROGRESS'}),
+            mock.call('fake', {'status': 'DONE'}),
+        ])
 
-        self.fake_plugin.on_end.assert_called_with('111')
+        self.fake_plugin.on_end.assert_called_with('111', lease=self.lease)
         self.lease_destroy.assert_called_once_with(self.lease_id)
         enforcement_on_end.assert_called_once()
 
@@ -1543,7 +1547,7 @@ class ServiceTestCase(tests.TestCase):
             mock.call('fake', {'status': 'IN_PROGRESS'}),
             mock.call('fake', {'status': 'DONE'}),
         ])
-        self.fake_plugin.on_end.assert_called_with('111')
+        self.fake_plugin.on_end.assert_called_with('111', lease=self.lease)
         self.lease_destroy.assert_called_once_with(self.lease_id)
         enforcement_on_end.assert_called_once()
 
@@ -1625,42 +1629,6 @@ class ServiceTestCase(tests.TestCase):
         self.reservation_update.assert_called_once_with(
             '111', {'status': 'error'})
         self.event_update.assert_called_once_with('1', {'status': 'ERROR'})
-
-    def test_getattr_with_correct_plugin_and_method(self):
-        self.fake_list_computehosts = (
-            self.patch(self.fake_phys_plugin, 'list_computehosts'))
-        self.fake_list_computehosts.return_value = 'foo'
-
-        self.manager.plugins = {'physical:host': self.fake_phys_plugin}
-        self.assertEqual('foo', getattr(self.manager,
-                                        'physical:host:list_computehosts')())
-
-    def test_getattr_with_incorrect_method_name(self):
-        self.fake_list_computehosts = (
-            self.patch(self.fake_phys_plugin, 'list_computehosts'))
-        self.fake_list_computehosts.return_value = 'foo'
-
-        self.manager.plugins = {'physical:host': self.fake_phys_plugin}
-        self.assertRaises(AttributeError, getattr, self.manager,
-                          'simplefakecallwithValueError')
-
-    def test_getattr_with_missing_plugin(self):
-        self.fake_list_computehosts = (
-            self.patch(self.fake_phys_plugin, 'list_computehosts'))
-        self.fake_list_computehosts.return_value = 'foo'
-
-        self.manager.plugins = {'physical:host': self.fake_phys_plugin}
-        self.assertRaises(manager_ex.UnsupportedResourceType, getattr,
-                          self.manager, 'plugin:not_present:list_computehosts')
-
-    def test_getattr_with_missing_method_in_plugin(self):
-        self.fake_list_computehosts = (
-            self.patch(self.fake_phys_plugin, 'list_computehosts'))
-        self.fake_list_computehosts.return_value = 'foo'
-
-        self.manager.plugins = {'physical:host': None}
-        self.assertRaises(AttributeError, getattr, self.manager,
-                          'physical:host:method_not_present')
 
     @mock.patch.object(messaging, 'get_rpc_server')
     def test_rpc_server(self, mock_get_rpc_server):

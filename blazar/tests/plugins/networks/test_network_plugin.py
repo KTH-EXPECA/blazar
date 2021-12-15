@@ -16,8 +16,8 @@
 import datetime
 import uuid
 
-from unittest import mock
 from oslo_config import cfg
+from unittest import mock
 
 from blazar import context
 from blazar.db import api as db_api
