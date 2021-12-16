@@ -749,7 +749,7 @@ class ManagerService(service_utils.RPCServer):
         db_api.reservation_update(reservation['id'],
                                   {'resource_id': resource_id})
 
-    def _allocation_candidates(self, lease, reservations, can_retry=True):
+    def _allocation_candidates(self, lease, reservations):
         """Returns dict by resource type of reservation candidates."""
         allocations = {}
 
@@ -770,37 +770,36 @@ class ManagerService(service_utils.RPCServer):
                 raise common_ex.BlazarException(
                     'Invalid plugin names are specified: %s' % resource_type)
 
+            original_res = res.copy()
             try:
-                if can_retry:
-                    plugin.update_default_parameters(res)
+                plugin.update_default_parameters(res)
                 candidate_ids = plugin.allocation_candidates(res)
-            except exceptions.NotEnoughResourcesAvailable as ex:
-                # If the plugin doesn't support default resource properties
-                # raise the exception
-                if not hasattr(
+            except exceptions.NotEnoughResourcesAvailable:
+                candidate_ids = None
+                # Retry this function if allowed
+                if hasattr(
                     CONF[plugin.resource_type],
                     "retry_allocation_without_defaults"
-                ) or not hasattr(
-                    CONF[plugin.resource_type],
-                    "display_default_resource_properties"
-                ):
-                    raise ex
+                ) and CONF[plugin.resource_type]\
+                        .retry_allocation_without_defaults:
+                    try:
+                        candidate_ids = plugin.allocation_candidates(
+                            original_res)
+                    except exceptions.NotEnoughResourcesAvailable:
+                        pass
 
-                # Retry this function if allowed
-                if (CONF[plugin.resource_type]
-                        .retry_allocation_without_defaults and can_retry):
-                    LOG.info("RETRYING CANDIDATES")
-                    return self._allocation_candidates(
-                        lease, reservations, can_retry=False)
-                else:
-                    # Raise a detailed exception if allowed
-                    if CONF[plugin.resource_type]\
+                # If the retry didn't get candidate IDs, raise an exception
+                if candidate_ids is not None:
+                    if hasattr(
+                        CONF[plugin.resource_type],
+                        "display_default_resource_properties"
+                    ) and CONF[plugin.resource_type]\
                             .display_default_resource_properties:
-                                raise exceptions.\
-                                    NotEnoughResourcesDefaultProperties(
-                                        params=str(res))
+                        raise exceptions.\
+                            NotEnoughResourcesDefaultProperties(
+                                params=str(res))
                     else:
-                        raise ex
+                        raise
 
             allocations[resource_type] = [
                 plugin.get(cid) for cid in candidate_ids]
