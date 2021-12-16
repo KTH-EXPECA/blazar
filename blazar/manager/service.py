@@ -781,6 +781,8 @@ class ManagerService(service_utils.RPCServer):
                     "retry_allocation_without_defaults"
                 ) and CONF[plugin.resource_type]\
                         .retry_allocation_without_defaults:
+                    LOG.info("Not enough resources with default properties. "
+                             "Retrying with defaults removed.")
                     try:
                         candidate_ids = plugin.allocation_candidates(
                             original_res)
@@ -788,7 +790,7 @@ class ManagerService(service_utils.RPCServer):
                         pass
 
                 # If the retry didn't get candidate IDs, raise an exception
-                if candidate_ids is not None:
+                if candidate_ids is None:
                     if hasattr(
                         CONF[plugin.resource_type],
                         "display_default_resource_properties"
