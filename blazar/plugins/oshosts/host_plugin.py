@@ -845,7 +845,8 @@ class PhysicalHostMonitorPlugin(monitor.GeneralMonitorPlugin,
                 if failed_hosts:
                     LOG.warn('%s failed.',
                              failed_hosts[0]['hypervisor_hostname'])
-                    reservation_flags = self._handle_failures(failed_hosts)
+                    for host in failed_hosts:
+                        self.set_reservable(host, False)
             else:
                 recovered_hosts = db_api.host_get_all_by_queries(
                     ['reservable == 0',

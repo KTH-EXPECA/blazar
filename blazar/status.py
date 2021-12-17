@@ -201,8 +201,8 @@ class LeaseStatus(BaseStatus):
                     lease_id = kwargs["lease_id"]
                 else:
                     lease_id = args[1]
-                l = db_api.lease_get(lease_id)
-                original_status = l['status']
+                lease = db_api.lease_get(lease_id)
+                original_status = lease['status']
                 if cls.is_valid_transition(original_status,
                                            transition,
                                            lease_id=lease_id):

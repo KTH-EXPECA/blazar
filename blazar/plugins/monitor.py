@@ -17,7 +17,6 @@
 import datetime
 
 from oslo_config import cfg
-import six
 
 import abc
 from blazar.manager import exceptions as manager_ex
@@ -57,8 +56,7 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class GeneralMonitorPlugin(base.BaseMonitorPlugin):
+class GeneralMonitorPlugin(base.BaseMonitorPlugin, metaclass=abc.ABCMeta):
     """Monitor plugin for resource."""
 
     # Singleton design pattern
