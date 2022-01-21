@@ -152,7 +152,7 @@ class NotEnoughHostsAvailable(NotEnoughResourcesAvailable):
     msg_fmt = _("Not enough hosts available")
 
 
-class NotEnoughResourcesDefaultProperties(exceptions.BlazarException):
+class NotEnoughResourcesDefaultProperties(NotEnoughResourcesAvailable):
     restore_lease_status = True
     msg_fmt = _("Not enough resources available with query %(params)s")
 

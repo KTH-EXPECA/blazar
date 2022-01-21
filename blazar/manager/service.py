@@ -452,8 +452,10 @@ class ManagerService(service_utils.RPCServer):
             exceptions.MissingParameter,
             exceptions.MalformedRequirements,
             exceptions.MalformedParameter,
-            exceptions.NotEnoughHostsAvailable,
+            exceptions.NotEnoughResourcesAvailable,
             exceptions.InvalidDate,
+            exceptions.CantUpdateParameter,
+            exceptions.InvalidPeriod,
         ]
     )
     def update_lease(self, lease_id, values):
