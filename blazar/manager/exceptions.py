@@ -87,7 +87,6 @@ class EventError(exceptions.BlazarException):
 
 class InvalidDate(exceptions.BlazarException):
     code = 400
-    restore_lease_status = True
     msg_fmt = _(
         '%(date)s is an invalid date. Required format: %(date_format)s')
 
@@ -145,33 +144,29 @@ class HypervisorNotFound(exceptions.BlazarException):
 
 
 class NotEnoughResourcesAvailable(exceptions.BlazarException):
-    restore_lease_status = True
+    pass
 
 
 class NotEnoughHostsAvailable(NotEnoughResourcesAvailable):
     msg_fmt = _("Not enough hosts available")
 
 
-class NotEnoughResourcesDefaultProperties(exceptions.BlazarException):
-    restore_lease_status = True
+class NotEnoughResourcesDefaultProperties(NotEnoughResourcesAvailable):
     msg_fmt = _("Not enough resources available with query %(params)s")
 
 
 class MalformedParameter(exceptions.BlazarException):
     code = 400
-    restore_lease_status = True
     msg_fmt = _("Malformed parameter %(param)s")
 
 
 class MalformedRequirements(exceptions.BlazarException):
     code = 400
-    restore_lease_status = True
     msg_fmt = _("Malformed requirements %(rqrms)s")
 
 
 class MissingParameter(exceptions.BlazarException):
     code = 400
-    restore_lease_status = True
     msg_fmt = _("Missing parameter %(param)s")
 
 
@@ -195,7 +190,6 @@ class ProjectIdNotFound(exceptions.BlazarException):
 
 class InvalidRange(exceptions.BlazarException):
     code = 400
-    restore_lease_status = True
     msg_fmt = _('Invalid values for min/max of hosts. '
                 'Max must be equal to or larger than min.')
 
@@ -261,7 +255,6 @@ class InvalidNetwork(exceptions.NotAuthorized):
 
 
 class NotEnoughNetworksAvailable(NotEnoughResourcesAvailable):
-    restore_lease_status = True
     msg_fmt = _("Not enough networks available")
 
 
@@ -287,7 +280,6 @@ class DeviceNotFound(exceptions.NotFound):
 
 
 class NotEnoughDevicesAvailable(NotEnoughResourcesAvailable):
-    restore_lease_status = True
     msg_fmt = _("Not enough devices available")
 
 

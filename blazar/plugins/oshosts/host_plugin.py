@@ -490,8 +490,8 @@ class PhysicalHostPlugin(base.BasePlugin, nova.NovaClientWrapper):
                 host['hypervisor_hostname'])
         except manager_ex.HostNotFound:
             LOG.warning(
-                "Host %s not found in Nova and could not be cleaned up. Some manual "
-                "cleanup may be required.", host['hypervisor_hostname']
+                "Host %s not found in Nova and could not be cleaned up. Some "
+                "manual cleanup may be required.", host['hypervisor_hostname']
             )
 
         try:

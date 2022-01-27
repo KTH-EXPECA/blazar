@@ -432,8 +432,32 @@ class ManagerService(service_utils.RPCServer):
                     self._send_notification(lease, events=['create'])
                     return lease
 
+    def _add_resource_type(self, reservations, existing_reservations):
+        rsvns_by_id = {}
+
+        for r in existing_reservations:
+            rsvns_by_id[r['id']] = r
+        for r in reservations:
+            if 'resource_type' not in r:
+                r['resource_type'] = rsvns_by_id[r['id']]['resource_type']
+
+        return reservations
+
     @status.lease.lease_status(
-        transition=status.lease.UPDATING, result_in=status.lease.STABLE)
+        transition=status.lease.UPDATING,
+        result_in=status.lease.STABLE,
+        non_fatal_exceptions=[
+            common_ex.InvalidInput,
+            exceptions.InvalidRange,
+            exceptions.MissingParameter,
+            exceptions.MalformedRequirements,
+            exceptions.MalformedParameter,
+            exceptions.NotEnoughResourcesAvailable,
+            exceptions.InvalidDate,
+            exceptions.CantUpdateParameter,
+            exceptions.InvalidPeriod,
+        ]
+    )
     def update_lease(self, lease_id, values):
         if not values:
             return db_api.lease_get(lease_id)
@@ -481,6 +505,9 @@ class ManagerService(service_utils.RPCServer):
             raise common_ex.InvalidInput(
                 'Please enter valid reservation IDs. Invalid reservation '
                 'IDs are: %s' % ','.join([str(id) for id in invalid_ids]))
+
+        reservations = self._add_resource_type(
+            reservations, existing_reservations)
 
         try:
             [
