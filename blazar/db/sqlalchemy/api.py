@@ -35,6 +35,7 @@ EXTRA_CAPABILITY_MODELS = {
     'network': models.NetworkSegmentExtraCapability,
     'device': models.DeviceExtraCapability,
 }
+FORBIDDEN_EXTRA_CAPABILITY_NAMES = ["id", "reservable"]
 
 LOG = logging.getLogger(__name__)
 
@@ -2073,12 +2074,15 @@ def _resource_property_get_or_create(session, resource_type, capability_name):
 
     if resource_property:
         return resource_property
-    else:
+    elif capability_name not in FORBIDDEN_EXTRA_CAPABILITY_NAMES:
         rp_values = {
             'resource_type': resource_type,
             'capability_name': capability_name}
 
         return resource_property_create(rp_values)
+    else:
+        raise db_exc.BlazarDBForbiddenExtraCapability(
+            property_name=capability_name)
 
 
 def resource_property_get_or_create(resource_type, capability_name):
