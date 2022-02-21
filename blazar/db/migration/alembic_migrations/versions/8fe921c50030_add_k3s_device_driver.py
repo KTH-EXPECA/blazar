@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""add k3s device driver
+"""add k8s device driver
 
 Revision ID: 8fe921c50030
 Revises: 42c7fd6e792e
@@ -31,7 +31,7 @@ from alembic import op
 def upgrade():
     connection = op.get_bind()
     connection.execute(
-        "ALTER TABLE devices MODIFY COLUMN device_driver ENUM('zun', 'k3s');")
+        "ALTER TABLE devices MODIFY COLUMN device_driver ENUM('zun', 'k8s');")
 
 
 def downgrade():

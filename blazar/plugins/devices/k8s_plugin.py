@@ -39,8 +39,8 @@ LABELS = {
 }
 
 
-class K3sPlugin():
-    device_driver = 'k3s'
+class K8sPlugin():
+    device_driver = 'k8s'
 
     def __init__(self):
         config.load_kube_config(config_file=CONF.k8s.kubeconfig_file)
@@ -92,7 +92,7 @@ class K3sPlugin():
         device_properties = {
             'name': device_name,
             'device_type': 'container',
-            'device_driver': K3sPlugin.device_driver
+            'device_driver': K8sPlugin.device_driver
         }
 
         to_store = set(device_values.keys()) - set(device_properties.keys())
