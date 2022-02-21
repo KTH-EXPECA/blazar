@@ -125,13 +125,7 @@ class FloatingIpPlugin(base.BasePlugin):
                 'floatingip_id': fip_id,
                 'reservation_id': reservation_id})
 
-        if reservation_status == status.reservation.ACTIVE:
-            self.deallocate(fip_reservation, allocs_to_remove)
-        else:
-            for allocation in allocs_to_remove:
-                LOG.debug('Removing floating IP {} from reservation {}'.format(
-                    allocation['floatingip_id'], reservation_id))
-                db_api.fip_allocation_destroy(allocation['id'])
+        self.deallocate(fip_reservation, allocs_to_remove)
 
     def _allocations_to_remove(self, dates_before, dates_after, allocs,
                                amount):
@@ -269,10 +263,13 @@ class FloatingIpPlugin(base.BasePlugin):
         self.deallocate(fip_reservation, allocations)
 
     def deallocate(self, fip_reservation, allocations):
-        fip_pool = neutron.FloatingIPPool(fip_reservation['network_id'])
+        reservation = db_api.reservation_get(fip_reservation["reservation_id"])
+        if reservation["status"] == status.reservation.ACTIVE:
+            fip_pool = neutron.FloatingIPPool(fip_reservation['network_id'])
+            for alloc in allocations:
+                fip = db_api.floatingip_get(alloc['floatingip_id'])
+                fip_pool.delete_reserved_floatingip(fip['floating_ip_address'])
         for alloc in allocations:
-            fip = db_api.floatingip_get(alloc['floatingip_id'])
-            fip_pool.delete_reserved_floatingip(fip['floating_ip_address'])
             db_api.fip_allocation_destroy(alloc['id'])
 
     def allocation_candidates(self, values):
