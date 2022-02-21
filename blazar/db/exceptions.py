@@ -50,5 +50,6 @@ class BlazarDBInvalidExtraCapability(BlazarDBException):
     msg_fmt = _('%(property_name)s does not exist for resource type '
                 '%(resource_type)s.')
 
+
 class BlazarDBForbiddenExtraCapability(BlazarDBException):
     msg_fmt = _('%(property_name)s cannot be set as an extra capability')

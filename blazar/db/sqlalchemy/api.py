@@ -2069,20 +2069,21 @@ def resource_property_update(resource_type, property_name, values):
 
 
 def _resource_property_get_or_create(session, resource_type, capability_name):
+    if capability_name in FORBIDDEN_EXTRA_CAPABILITY_NAMES:
+        raise db_exc.BlazarDBForbiddenExtraCapability(
+            property_name=capability_name)
+
     resource_property = _resource_property_get(
         session, resource_type, capability_name)
 
     if resource_property:
         return resource_property
-    elif capability_name not in FORBIDDEN_EXTRA_CAPABILITY_NAMES:
+    else:
         rp_values = {
             'resource_type': resource_type,
             'capability_name': capability_name}
 
         return resource_property_create(rp_values)
-    else:
-        raise db_exc.BlazarDBForbiddenExtraCapability(
-            property_name=capability_name)
 
 
 def resource_property_get_or_create(resource_type, capability_name):
