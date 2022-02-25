@@ -85,8 +85,13 @@ class K8sPlugin():
         if device_name is None:
             raise manager_ex.InvalidHost(host=device_values)
 
-        node = self.core_v1.read_node(device_name)
-        if not node:
+        try:
+            self.core_v1.read_node(device_name)
+        # TODO(jason): Future versions of the kubernetes client have this import
+        # available just from client.ApiException.
+        except client.api_client.ApiException as exc:
+            if exc.status != 404:
+                LOG.exception("Error fetching node from k8s")
             raise manager_ex.DeviceNotFound(device=device_name)
 
         device_properties = {
