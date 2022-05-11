@@ -805,7 +805,10 @@ def host_destroy(host_id):
             # raise not found error
             raise db_exc.BlazarDBNotFound(id=host_id, model='Host')
 
-        session.delete(host)
+        host.soft_delete(session=session)
+        # Also delete this host's extra capabilities
+        for capability in host.computehost_extra_capabilities:
+            capability.soft_delete(session=session)
 
 
 # ComputeHostExtraCapability
@@ -892,7 +895,7 @@ def host_extra_capability_destroy(host_extra_capability_id):
                 id=host_extra_capability_id,
                 model='ComputeHostExtraCapability')
 
-        session.delete(host_extra_capability[0])
+        host_extra_capability[0].soft_delete(session=session)
 
 
 def host_extra_capability_get_all_per_name(host_id, capability_name):
@@ -1191,7 +1194,7 @@ def floatingip_destroy(floatingip_id):
             # raise not found error
             raise db_exc.BlazarDBNotFound(id=floatingip_id, model='FloatingIP')
 
-        session.delete(floatingip)
+        floatingip.soft_delete(session=session)
 
 
 # Networks
@@ -1252,7 +1255,11 @@ def network_destroy(network_id):
             raise db_exc.BlazarDBNotFound(
                 id=network_id, model='Network segment')
 
-        session.delete(network)
+        network.soft_delete(session=session)
+
+        # Also delete this network's extra capabilities
+        for capability in network_extra_capability_get_all_per_network(network_id):
+            capability.soft_delete(session=session)
 
 
 # NetworkAllocation
@@ -1559,7 +1566,7 @@ def network_extra_capability_destroy(network_extra_capability_id):
                 id=network_extra_capability_id,
                 model='NetworkSegmentExtraCapability')
 
-        session.delete(network_extra_capability[0])
+        network_extra_capability[0].soft_delete(session=session)
 
 
 def network_extra_capability_get_all_per_name(network_id, capability_name):
@@ -1642,7 +1649,11 @@ def device_destroy(device_id):
             raise db_exc.BlazarDBNotFound(
                 id=device_id, model='Device')
 
-        session.delete(device)
+        device.soft_delete(session=session)
+
+        # Also delete this device's extra capabilities
+        for capability in device_extra_capability_get_all_per_device(device_id):
+            capability.soft_delete(session=session)
 
 
 # DeviceAllocation
@@ -1963,7 +1974,7 @@ def device_extra_capability_destroy(device_extra_capability_id):
                 id=device_extra_capability_id,
                 model='DeviceExtraCapability')
 
-        session.delete(device_extra_capability[0])
+        device_extra_capability[0].soft_delete(session=session)
 
 
 def device_extra_capability_get_all_per_name(device_id, capability_name):
@@ -2014,10 +2025,11 @@ def resource_properties_list(resource_type):
     with session.begin():
 
         resource_model = EXTRA_CAPABILITY_MODELS[resource_type]
-        query = session.query(
+        query = _read_deleted_filter(session.query(
             models.ExtraCapability.capability_name,
             models.ExtraCapability.private,
-            resource_model.capability_value).join(resource_model).distinct()
+            resource_model.capability_value,
+        ).join(resource_model), resource_model, deleted=False).distinct()
 
         return query.all()
 
