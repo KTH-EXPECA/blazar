@@ -20,7 +20,7 @@ from novaclient import exceptions as nova_exceptions
 from oslo_config import cfg
 from oslo_utils import strutils
 
-from blazar import context
+from blazar import context, policy
 from blazar.db import api as db_api
 from blazar.db import exceptions as db_ex
 from blazar.db import utils as db_utils
@@ -533,6 +533,23 @@ class PhysicalHostPlugin(base.BasePlugin, nova.NovaClientWrapper):
         return {"resource_id": host_id, "reservations": allocs}
 
     def reallocate_computehost(self, host_id, data):
+        lease_id = data.get('lease_id')
+        if lease_id:
+            # If we're only reallocating a host for a single lease,
+            # then we allow non-admin users to perform this action,
+            # but only on leases they own
+            lease = db_api.lease_get(lease_id)
+            ctx = context.current()
+            prid = lease['project_id']
+            policy.check_enforcement('leases', action='reallocate', ctx=ctx, target={
+                'project': prid,
+                'user': ctx.user_id,
+                'project_id': prid,
+                'user_id': ctx.user_id,
+            })
+        else:
+            policy.check_enforcement('oshosts', action='reallocate')
+
         allocations = self.get_allocations(host_id, data, detail=True)
 
         for alloc in allocations['reservations']:
