@@ -52,7 +52,6 @@ class StoragePlugin():
     def __init__(self):
         super(StoragePlugin, self).__init__()
         self.neutron_client = neutron.BlazarNeutronClient()
-        self.manila_client = manila.BlazarManilaClient()
         # get ganesha subnetpool by name
         ganesha_subnetpool = self.neutron_client.list_subnetpools(
             name=CONF.network_storage.storage_subnetpool
@@ -134,8 +133,9 @@ class StoragePlugin():
         run_immediately=True
     )
     def _set_manila_share_access_rules(self, manager_obj, context):
+        manila_client = manila.BlazarManilaClient()
         # get all available shares
-        shares = self.manila_client.shares.list(
+        shares = manila_client.shares.list(
             search_opts={
                 "all_tenants": 1,
                 "share_type": CONF.network_storage.ceph_nfs_share_type,
@@ -148,7 +148,7 @@ class StoragePlugin():
         for share in shares:
             try:
                 proj = share.project_id
-                access_rules = self.manila_client.shares.access_list(share.id)
+                access_rules = manila_client.shares.access_list(share.id)
                 existing_ip_to_rule_id = {
                     rule.access_to: rule.id for rule in access_rules
                     if rule.access_level == "rw"
@@ -158,11 +158,11 @@ class StoragePlugin():
                 ips_to_add = set(new_ips).difference(existing_ips)
                 ips_to_delete = set(existing_ips).difference(new_ips)
                 for ip in ips_to_add:
-                    self.manila_client.shares.allow(
+                    manila_client.shares.allow(
                         share.id, "ip", ip, "rw"
                     )
                 for ip in ips_to_delete:
-                    self.manila_client.shares.deny(
+                    manila_client.shares.deny(
                         share.id, existing_ip_to_rule_id[ip]
                     )
                 # all users should have ro access to a public share
@@ -172,12 +172,12 @@ class StoragePlugin():
                 ]
                 if share.is_public and not existing_ro_rule_ids:
                     for prefix in self.ganesha_subnetpool["prefixes"]:
-                        self.manila_client.shares.allow(
+                        manila_client.shares.allow(
                             share.id, "ip", prefix, "ro"
                         )
                 if not share.is_public and existing_ro_rule_ids:
                     for rule_id in existing_ro_rule_ids:
-                        self.manila_client.shares.deny(
+                        manila_client.shares.deny(
                             share.id, rule_id
                         )
             except Exception as e:
