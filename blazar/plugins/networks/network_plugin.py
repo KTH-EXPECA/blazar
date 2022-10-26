@@ -207,6 +207,7 @@ class NetworkPlugin(base.BasePlugin):
             network_type = network_segment['network_type']
             physical_network = network_segment['physical_network']
             segment_id = network_segment['segment_id']
+            segment_subnet = network_segment['segment_subnet']
             neutron_client = neutron.BlazarNeutronClient()
             network_body = {
                 "network": {
@@ -230,6 +231,21 @@ class NetworkPlugin(base.BasePlugin):
                 network_id = network_dict['id']
                 db_api.network_reservation_update(network_reservation['id'],
                                                   {'network_id': network_id})
+                
+                if segment_subnet:
+                    subnet_body = {
+                        "subnet": {
+                            "name": "blazar_subnet",
+                            "network_id": network_id,
+                            "project_id": lease['project_id'],
+                            "gateway_ip": None,
+                            "ip_version": 4,
+                            "cidr": segment_subnet,
+                            "enable_dhcp": False
+                        }
+                    }
+                    neutron_client.create_subnet(body=subnet_body)
+
             except Exception as e:
                 LOG.error("create_network failed: %s", e)
                 raise manager_ex.NetworkCreationFailed(name=network_name,
