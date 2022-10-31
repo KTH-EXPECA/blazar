@@ -15,6 +15,7 @@
 # under the License.
 
 import datetime
+import json
 from random import shuffle
 
 from keystoneauth1 import exceptions as keystone_excptions
@@ -208,6 +209,7 @@ class NetworkPlugin(base.BasePlugin):
             physical_network = network_segment['physical_network']
             segment_id = network_segment['segment_id']
             segment_subnet = network_segment['segment_subnet']
+            baremetal_ports = network_segment['baremetal_ports']
             neutron_client = neutron.BlazarNeutronClient()
             network_body = {
                 "network": {
@@ -244,7 +246,28 @@ class NetworkPlugin(base.BasePlugin):
                             "enable_dhcp": False
                         }
                     }
-                    neutron_client.create_subnet(body=subnet_body)
+                    subnet = neutron_client.create_subnet(body=subnet_body)
+                    subnet_id = subnet['subnet']['id']
+
+                if baremetal_ports:
+                    # load json
+                    baremetal_ports = json.load(baremetal_ports)
+
+                    # get the ironic client
+                    ironic_client = None
+                    try:
+                        ironic_client = ironic.BlazarIronicClient()
+                    except keystone_excptions.catalog.EndpointNotFound:
+                        LOG.exception("The endpoint for Ironic not found")
+
+                    # create the ports!
+                    for baremetal_port in baremetal_ports:
+                        self.create_port(
+                                neutron_client, 
+                                ironic_client, 
+                                baremetal_port,
+                                network_id, 
+                                subnet_id)
 
             except Exception as e:
                 LOG.error("create_network failed: %s", e)
@@ -265,6 +288,34 @@ class NetworkPlugin(base.BasePlugin):
                         id=reservation_id,
                         msg=str(e)
                     )
+
+    def create_port(self, 
+            neutron_client, 
+            ironic_client, 
+            port_info, 
+            network_uuid, 
+            subnet_uuid):
+
+        # create a fake baremetal node for each port
+        node = ironic_client.node.create(driver="ipmi")
+        host_uuid = node.uuid
+
+        # create a port with the requested specs on the new baremetal node
+        port_body = {
+            "port": {
+                "name":port_info["name"],
+                "network_id":network_uuid,
+                "device_owner": "compute:nova",
+                "fixed_ips": [ {
+                    "subnet_id":subnet_uuid,
+                    "ip_address":port_info["ip-address"],
+                } ],
+                "binding:host_id":host_uuid,
+                "binding:vnic_type":"baremetal",
+                "binding:profile":port_info["binding-profile"],
+            },
+        }
+        neutron_client.create_port(port_body)
 
     def delete_port(self, neutron_client, ironic_client, port):
         if port['binding:vnic_type'] == 'baremetal':

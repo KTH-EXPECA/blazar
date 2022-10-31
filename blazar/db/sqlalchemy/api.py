@@ -1246,6 +1246,7 @@ def network_update(network_id, values):
 
 
 def network_destroy(network_id):
+    capability_ids = []
     session = get_session()
     with session.begin():
         network = _network_get(session, network_id)
@@ -1258,9 +1259,9 @@ def network_destroy(network_id):
         network.soft_delete(session=session)
 
         # Also delete this network's extra capabilities
-        for capability in network_extra_capability_get_all_per_network(network_id):
-            capability.soft_delete(session=session)
-
+        # TODO raises exception (soft delete does not work)
+        #for capability in network_extra_capability_get_all_per_network(network_id):
+        #    capability.soft_delete(session=session)
 
 # NetworkAllocation
 
