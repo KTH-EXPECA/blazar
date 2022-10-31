@@ -251,7 +251,7 @@ class NetworkPlugin(base.BasePlugin):
 
                 if baremetal_ports:
                     # load json
-                    baremetal_ports = json.load(baremetal_ports)
+                    baremetal_ports = json.loads(baremetal_ports)
 
                     # get the ironic client
                     ironic_client = None
