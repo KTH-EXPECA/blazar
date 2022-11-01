@@ -209,6 +209,7 @@ class NetworkPlugin(base.BasePlugin):
             physical_network = network_segment['physical_network']
             segment_id = network_segment['segment_id']
             segment_subnet = network_segment['segment_subnet']
+            segment_gateway = network_segment['segment_gateway']
             baremetal_ports = network_segment['baremetal_ports']
             neutron_client = neutron.BlazarNeutronClient()
             network_body = {
@@ -240,7 +241,7 @@ class NetworkPlugin(base.BasePlugin):
                             "name": "blazar_subnet",
                             "network_id": network_id,
                             "project_id": lease['project_id'],
-                            "gateway_ip": None,
+                            "gateway_ip": segment_gateway if segment_gateway else None,
                             "ip_version": 4,
                             "cidr": segment_subnet,
                             "enable_dhcp": False
