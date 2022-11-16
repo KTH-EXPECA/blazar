@@ -383,10 +383,8 @@ class NetworkPlugin(base.BasePlugin):
                 router_ports = neutron_client.list_ports(device_id=router_id)
 
                 # Remove static routes
-                # (zhenz) comment out removing static routes, as it breaks
-                # current design with storage vlan
-                # neutron_client.update_router(
-                #    router_id, body={'router': {'routes': []}})
+                neutron_client.update_router(
+                    router_id, body={'router': {'routes': []}})
 
                 # Remove subnets
                 subnets = set()
@@ -403,9 +401,7 @@ class NetworkPlugin(base.BasePlugin):
                                                            body=body)
 
                 # Delete external gateway and router
-                # (zhenz) comment out deleting router, as it breaks
-                # current design with storage vlan
-                # self.delete_router(neutron_client, router_id)
+                self.delete_router(neutron_client, router_id)
 
             for subnet_id in subnet_ids:
                 self.delete_subnet(neutron_client, subnet_id)
