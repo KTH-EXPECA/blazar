@@ -82,7 +82,7 @@ class ReservationStatus(BaseStatus):
     NEXT_STATUSES = {
         PENDING: (ACTIVE, DELETED, ERROR),
         ACTIVE: (DELETED, ERROR),
-        DELETED: (),
+        DELETED: (ERROR,),
         ERROR: (DELETED,)
     }
 
@@ -207,7 +207,7 @@ class LeaseStatus(BaseStatus):
                 original_status = lease['status']
                 if cls.is_valid_transition(original_status,
                                            transition,
-                                           lease_id=lease_id):
+                                           lease_id=lease_id) or (original_status == 'ERROR' and transition == 'DELETING'):
                     db_api.lease_update(lease_id,
                                         {'status': transition})
                     LOG.debug('Status of lease %s changed from %s to %s.',
