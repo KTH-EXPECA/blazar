@@ -401,7 +401,9 @@ class NetworkPlugin(base.BasePlugin):
                                                            body=body)
 
                 # Delete external gateway and router
-                self.delete_router(neutron_client, router_id)
+                # (samie) Why delete the router!? it can have other interfaces
+                # in other subnets
+                # self.delete_router(neutron_client, router_id)
 
             for subnet_id in subnet_ids:
                 self.delete_subnet(neutron_client, subnet_id)
